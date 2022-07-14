@@ -1,10 +1,9 @@
-// Copyright 2022, Moses Turner
+// Copyright 2022, Collabora, Inc.
 // SPDX-License-Identifier: BSL-1.0
 /*!
  * @file
  * @brief  The thing is here!
- * @author Moses Turner <mosesturner@collabora.com>
- * @ingroup tracking
+ * @author Moses Turner <moses@collabora.com>
  */
 
 
@@ -21,10 +20,7 @@ int main() {
 
 		cv::imshow("h", img);
 		cv::waitKey(1);
-
-
 	}
-
 	return 0;
 }
 

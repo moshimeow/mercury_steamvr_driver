@@ -4,13 +4,6 @@
 cmake_minimum_required(VERSION 3.10.2)
 project(thingyTHING VERSION 0.0.1)
 
-
-#"-DCMAKE_TOOLCHAIN_FILE=C:/dev/vcpkg/scripts/buildsystems/vcpkg.cmake"
-
-# DELETE THIS - MOSES SPECIFIC HACK:
-#set(CMAKE_TOOLCHAIN_FILE "C:/dev/vcpkg/scripts/buildsystems/vcpkg.cmake")
-find_package(OpenCV CONFIG REQUIRED)
-
 find_package(
 	OpenCV
 	REQUIRED
