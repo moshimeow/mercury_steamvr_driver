@@ -1,0 +1,3 @@
+[submodule "monado"]
+	path = monado
+	url = ./monado
