@@ -1,3 +1,6 @@
 [submodule "monado"]
 	path = monado
 	url = ./monado
+[submodule "hand-tracking-models"]
+	path = hand-tracking-models
+	url = ./hand-tracking-models/
