@@ -4,6 +4,46 @@
 cmake_minimum_required(VERSION 3.10.2)
 project(thingyTHING VERSION 0.0.1)
 
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+if(NOT MSVC)
+	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -pedantic -Wall -Wextra -Wno-unused-parameter -Werror=incompatible-pointer-types")
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wno-unused-parameter")
+	set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--no-undefined")
+	set(CMAKE_MODULE_LINKER_FLAGS "${CMAKE_MODULE_LINKER_FLAGS} -Wl,--no-undefined")
+endif()
+
+# Default to PIC code
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+
+set(MONADO_SRC_XRT ${CMAKE_CURRENT_SOURCE_DIR}/monado/src/xrt)
+
+### Set configuration options for Monado
+set(XRT_FEATURE_COMPOSITOR_MAIN OFF) # we are not using this
+set(XRT_FEATURE_COMPOSITOR_NULL OFF) # we are not using this
+set(XRT_FEATURE_OPENXR OFF) # we need to replace this to pull together a different combination of modules
+set(XRT_FEATURE_IPC OFF)
+set(XRT_FEATURE_OPENXR OFF)
+set(XRT_FEATURE_RENDERDOC OFF)
+set(XRT_FEATURE_SERVICE OFF)
+set(XRT_FEATURE_SERVICE_SYSTEMD OFF)
+set(XRT_FEATURE_STEAMVR_PLUGIN OFF) # for now. we'll see what transpires
+set(XRT_FEATURE_TRACING OFF) #ditto
+set(XRT_FEATURE_SLAM OFF) #Not using it
+
+set(XRT_FEATURE_CLIENT_DEBUG_GUI OFF)
+
+
+set(XRT_HAVE_SDL2 OFF) # Don't need this - for debug UI
+
+
+
+# Make sure we have pretty colours
+option (FORCE_COLORED_OUTPUT "Always produce ANSI-colored output (GNU/Clang only)." TRUE)
+
+add_subdirectory(monado)
+
 message("${CMAKE_CURRENT_SOURCE_DIR}")
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/")
@@ -98,7 +138,17 @@ target_link_libraries(
 	THINGY
 	PRIVATE
 	${OpenCV_LIBRARIES}
+  xrt-interfaces aux_util aux_vive t_ht_mercury
 )
+
+target_include_directories(
+	THINGY
+	PRIVATE
+  # xrt-interfaces
+  # aux_vive
+)
+
+
 
 #target_include_directories(
 #	THINGY
