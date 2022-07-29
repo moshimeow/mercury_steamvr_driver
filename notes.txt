@@ -1,0 +1,23 @@
+notes. 
+
+vcpkg packages:
+opencv:x64-windows
+eigen3:x64-windows
+pthreads:x64-windows
+
+zlib ??
+
+for some reason needed aux_util and aux_vive to worky. disturbing.
+
+https://docs.microsoft.com/en-us/cpp/build/reference/bigobj-increase-number-of-sections-in-dot-obj-file?view=msvc-170
+
+
+git lfs
+https://github.com/git-lfs/git-lfs/releases/tag/v3.2.0
+don't really care about how to get hand tracking models, just needs to work.
+
+todo:
+figure out why aux_vive requires zlib, remove if necessary
+
+figure out how to not compile psvr/psmv/t_kalman along with rest of aux_tracking. make an aux_tracking_psmv?
+make those depend on if the psmv driver is active?
