@@ -131,7 +131,7 @@ endif()
 #endif()
 
 add_executable(
-	THINGY 	src/main.cpp src/videoInput.h src/videoInput.cpp # src/cap_dshow.cpp src/cap_dshow.hpp
+	THINGY 	src/camera_demo.cpp src/videoInput.h src/videoInput.cpp # src/cap_dshow.cpp src/cap_dshow.hpp
 )
 
 target_link_libraries(
