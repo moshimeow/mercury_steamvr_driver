@@ -167,6 +167,15 @@ struct t_hand_tracking_sync * sync =
 		uint64_t out_timestamp;
 t_ht_sync_process(sync, frames[0], frames[1], &hands[0], &hands[1], &out_timestamp);
 
+
+
+
+
+	for (int i = 0; i < 2; i ++) {
+		// Don't need 'em
+		xrt_frame_reference(&frames[i], NULL);
+	}
+
 		// 		cv::imshow("0", mats_grayscale[0]);
 		// 		cv::imshow("l", mats_grayscale[1]);
 		// cv::waitKey(1);
