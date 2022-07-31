@@ -1,5 +1,7 @@
 .vs/
 out/
 
+cmake-build-*/
+build/
 
 CMakeSettings.json
