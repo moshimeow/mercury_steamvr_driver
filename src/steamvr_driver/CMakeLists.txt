@@ -1,55 +1,37 @@
 # Copyright 2020-2021, Collabora, Ltd.
 # SPDX-License-Identifier: BSL-1.0
 
-# get_property(AUX_BINDINGS_DIR GLOBAL PROPERTY AUX_BINDINGS_DIR_PROP)
-# set(INPUT_PROFILES_INPUT_DIR ${AUX_BINDINGS_DIR})
-# set(INPUT_PROFILES_OUTPUT_DIR "${PROJECT_BINARY_DIR}/steamvr-monado/resources/input/")
+add_library(driver_mercury MODULE driver_factory.cpp device_provider.h device_provider.cpp mercury_device.h mercury_device.cpp util/driver_log.h util/driver_log.cpp util/win_utils.h util/win_utils.cpp util/vr_utils.h util/vr_utils.cpp util/video_input.h util/video_input.cpp util/bones.h util/bones.cpp)
 
-# add_custom_command(
-# 	OUTPUT "${INPUT_PROFILES_OUTPUT_DIR}"
-# 	COMMAND
-# 		${PYTHON_EXECUTABLE} ${INPUT_PROFILES_INPUT_DIR}/steamvr_profiles.py
-# 		${INPUT_PROFILES_INPUT_DIR}/bindings.json "${INPUT_PROFILES_OUTPUT_DIR}"
-# 	DEPENDS ${INPUT_PROFILES_INPUT_DIR}/bindings.py ${INPUT_PROFILES_INPUT_DIR}/bindings.json
-# 	COMMENT "Generating SteamVR input profiles to ${INPUT_PROFILES_OUTPUT_DIR}"
-# 	)
-# add_custom_target(
-# 	steamvr_generated_input_profiles
-# 	DEPENDS "${INPUT_PROFILES_OUTPUT_DIR}"
-# 	COMMENT "Generating SteamVR input profiles"
-# 	)
-
-# todo this name doesn't make sense and is the same as targets/steamvr_drv.
-# chose it so that I can just copy stuff out of t/steamvr_drv
-# but at some point we should rename it
-add_library(driver_monado MODULE stdafx.cpp stdafx.h steamvr_dllmain.cpp steamvr_thingy.hpp)
-
-# add_dependencies(driver_monado steamvr_generated_input_profiles)
 
 target_link_libraries(
-	driver_monado
-	PRIVATE
-		xrt-external-openvr
-		aux_util
-		# st_ovrd
-		# st_prober
-		# target_lists
-		# target_instance_no_comp
-	)
+        driver_mercury
+        PRIVATE
+        xrt-external-openvr
+        aux_util
+        ${OpenCV_LIBRARIES}
+        xrt-interfaces
+        aux_vive
+        t_ht_mercury
+        # st_ovrd
+        # st_prober
+        # target_lists
+        # target_instance_no_comp
+)
 # copied from project_northstar_openvr_driver
-target_compile_definitions(driver_monado PUBLIC -D_EXPORT)
+target_compile_definitions(driver_mercury PUBLIC -D_EXPORT)
 
 # openvr/samples/driver_sample
 # note - what is CMAKE_DL_LIBS?
 # i THINK THESE ARE getting expanded to just nothing
-target_link_libraries(driver_monado
-  ${OPENVR_LIBRARIES}
-  ${CMAKE_DL_LIBS}
-)
+target_link_libraries(driver_mercury
+        ${OPENVR_LIBRARIES}
+        ${CMAKE_DL_LIBS}
+        )
 
 # # meta data that the steamvr plugin needs in the base directory of the steamvr plugin
-file(COPY driver.vrdrivermanifest DESTINATION ${PROJECT_BINARY_DIR}/steamvr-monado)
-file(COPY resources DESTINATION ${PROJECT_BINARY_DIR}/steamvr-monado)
+file(COPY mercury/driver.vrdrivermanifest DESTINATION ${PROJECT_BINARY_DIR}/mercury)
+file(COPY mercury/resources DESTINATION ${PROJECT_BINARY_DIR}/mercury)
 
 # determine the output directory for the steamvr plugin
 # if(WIN32)
@@ -75,18 +57,18 @@ file(COPY resources DESTINATION ${PROJECT_BINARY_DIR}/steamvr-monado)
 
 # didn't make much sense but SteamVR seemed to want win32. please replace if you figure this out
 # what? ok it should definitely be win64. what the heck
-set(PLUGINDIR "${PROJECT_BINARY_DIR}/steamvr-monado/bin/win64")
+set(PLUGINDIR "${PROJECT_BINARY_DIR}/mercury/bin/win64")
 
 # set
 
 
 # message("SteamVR plugin path: ${PLUGINDIR}")
-set_target_properties(driver_monado PROPERTIES LIBRARY_OUTPUT_DIRECTORY "${PLUGINDIR}")
+set_target_properties(driver_mercury PROPERTIES LIBRARY_OUTPUT_DIRECTORY "${PLUGINDIR}")
 
 # don't add lib prefix to driver_monado.so
-set_target_properties(driver_monado PROPERTIES PREFIX "")
+set_target_properties(driver_mercury PROPERTIES PREFIX "")
 
 install(
-	DIRECTORY "${PROJECT_BINARY_DIR}/steamvr-monado"
-	DESTINATION "${CMAKE_INSTALL_PREFIX}/share"
-	)
+        DIRECTORY "${PROJECT_BINARY_DIR}/mercury"
+        DESTINATION "${CMAKE_INSTALL_PREFIX}/share"
+)

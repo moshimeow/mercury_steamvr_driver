@@ -1,0 +1,11 @@
+{
+	"alwaysActivate": true,
+	"name" : "mercury",
+	"directory" : "",
+	"resourceOnly" : false,
+
+	"hmd_presence" :
+	[
+		"*.*"
+	]
+}
