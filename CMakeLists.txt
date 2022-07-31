@@ -34,9 +34,16 @@ set(XRT_FEATURE_SLAM OFF) #Not using it
 
 set(XRT_FEATURE_CLIENT_DEBUG_GUI OFF)
 
-
 set(XRT_HAVE_SDL2 OFF) # Don't need this - for debug UI
 
+set(XRT_FEATURE_STANDALONE_VIVE_CONFIG ON)
+set(XRT_FEATURE_STANDALONE_MERCURY_HANDTRACKING ON)
+
+
+# should be unnecessary but VS caching. delete later.
+set(XRT_BUILD_DRIVER_VIVE OFF)
+set(XRT_BUILD_DRIVER_HANDTRACKING OFF)
+set(XRT_BUILD_DRIVER_EUROC OFF)
 
 
 # Make sure we have pretty colours
@@ -149,6 +156,8 @@ target_include_directories(
 )
 
 
+
+add_subdirectory(src)
 
 #target_include_directories(
 #	THINGY

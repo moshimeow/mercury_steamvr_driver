@@ -21,3 +21,30 @@ figure out why aux_vive requires zlib, remove if necessary
 
 figure out how to not compile psvr/psmv/t_kalman along with rest of aux_tracking. make an aux_tracking_psmv?
 make those depend on if the psmv driver is active?
+
+steamvr.vrsettings unnecessary
+
+/mnt/c/Program Files (x86)/Steam/steamapps/common/SteamVR/bin/win64/vrpathreg.exe
+
+"Program Files (x86)/Steam/steamapps/common/SteamVR/bin/win64/vrpathreg.exe"
+
+vrpathreg may not have been enough - might need
+
+```
+	"external_drivers" : 
+	[
+		C:\dev\ht_windows_steamvr_2\out\build\x64-Debug\steamvr-monado\"
+	],
+```
+
+in openvrpaths.vrpath
+
+oh wait no vrpathreg added that for us :P hmm yep it 10% did
+
+ok so.... wat?
+
+
+
+Severity	Code	Description	Project	File	Line	Suppression State
+Error		CMake Error at C:/Program Files/Microsoft Visual Studio/2022/Community/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/share/cmake-3.22/Modules/FindPackageHandleStandardArgs.cmake:230 (message):
+  Could NOT find Python3 (missing: Python3_EXECUTABLE Interpreter)		C:/Program Files/Microsoft Visual Studio/2022/Community/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/share/cmake-3.22/Modules/FindPackageHandleStandardArgs.cmake	230	
