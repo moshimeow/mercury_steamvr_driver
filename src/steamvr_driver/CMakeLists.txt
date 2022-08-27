@@ -12,7 +12,7 @@ target_link_libraries(
         ${OpenCV_LIBRARIES}
         xrt-interfaces
         aux_vive
-        t_ht_mercury
+        t_ht_mercury # XXX meowses, 8/27: this results in link failure? Really shouldn't... 
         # st_ovrd
         # st_prober
         # target_lists

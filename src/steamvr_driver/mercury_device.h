@@ -5,13 +5,15 @@
 
 #include "openvr_driver.h"
 #include "tracking/t_hand_tracking.h"
+#include "xrt/xrt_defines.h"
+#include "math/m_space.h"
 #include "util/bones.h"
 
 
 class MercuryHandDevice : public vr::ITrackedDeviceServerDriver {
 public:
 
-    explicit MercuryHandDevice(vr::ETrackedControllerRole role);
+    explicit MercuryHandDevice(vr::ETrackedControllerRole role, struct xrt_pose in_head_in_left);
 
     vr::EVRInitError Activate(uint32_t unObjectId) override;
 
@@ -30,6 +32,8 @@ public:
 
 private:
     bool IsLeftHand();
+
+    struct xrt_pose left_camera_in_head;
 
     vr::TrackedDeviceIndex_t device_id_;
     vr::ETrackedControllerRole role_;

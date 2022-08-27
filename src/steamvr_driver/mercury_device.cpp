@@ -2,8 +2,10 @@
 
 #include "util/driver_log.h"
 
-MercuryHandDevice::MercuryHandDevice(vr::ETrackedControllerRole role) {
+MercuryHandDevice::MercuryHandDevice(vr::ETrackedControllerRole role, struct xrt_pose in_head_in_left) {
     role_ = role;
+
+    math_pose_invert(&in_head_in_left, &this->left_camera_in_head);
 }
 
 vr::EVRInitError MercuryHandDevice::Activate(uint32_t unObjectId) {
@@ -23,6 +25,8 @@ vr::EVRInitError MercuryHandDevice::Activate(uint32_t unObjectId) {
                                                        : "valve/index_controllerLHR-E217CD01");
     vr::VRProperties()->SetStringProperty(props, vr::Prop_ControllerType_String, "knuckles");
     vr::VRProperties()->SetStringProperty(props, vr::Prop_ManufacturerName_String, "danwillm");
+    vr::VRProperties()->SetStringProperty(props, vr::Prop_RenderModelName_String, !IsLeftHand() ? "{indexcontroller}valve_controller_knu_1_0_right" : "{indexcontroller}valve_controller_knu_1_0_left");
+
 
     vr::VRDriverInput()->CreateSkeletonComponent(
             props,
@@ -34,7 +38,11 @@ vr::EVRInitError MercuryHandDevice::Activate(uint32_t unObjectId) {
             OPENVR_BONE_COUNT,
             &skeleton_component_handle_);
 
-    has_activated_ = true;
+    // below, as-is, broke hand tracking input. Unsure.
+    // vr::VRProperties()->SetInt32Property(props, vr::Prop_ControllerRoleHint_Int32, IsLeftHand() ? vr::TrackedControllerRole_RightHand : vr::TrackedControllerRole_LeftHand);
+
+
+    this->has_activated_ = true;
 
     return vr::VRInitError_None;
 }
@@ -58,11 +66,40 @@ vr::HmdQuaternion_t GetRotation(const vr::HmdMatrix34_t &matrix) {
     return q;
 }
 
+template <class T, class U>
+void
+convert_quaternion(const T &p_quatA, U &p_quatB)
+{
+	p_quatB.x = p_quatA.x;
+	p_quatB.y = p_quatA.y;
+	p_quatB.z = p_quatA.z;
+	p_quatB.w = p_quatA.w;
+}
+
+
+template <class T, class U>
+void
+convert_vec3(const T &p_quatA, U &p_quatB)
+{
+	p_quatB.x = p_quatA.x;
+	p_quatB.y = p_quatA.y;
+	p_quatB.z = p_quatA.z;
+}
+
+
+
+// Updates the poses of the fake controllers as well as the finger poses
 void MercuryHandDevice::UpdateHandTracking(const xrt_hand_joint_set *joint_set) {
-    if (!has_activated_) return;
+    if (!this->has_activated_) return;
 
-    HandJointSetToBoneTransform(*joint_set, bone_transforms_, role_);
+    
+    // Gets the finger poses relative to... the "root"
+    // It's constantly up for debate what "the root" actually is
+    HandJointSetToBoneTransform(*joint_set, this->bone_transforms_, role_);
 
+
+    // Sets the finger poses
+    //! @todo: do we really need to update it twice?
     vr::VRDriverInput()->UpdateSkeletonComponent(skeleton_component_handle_, vr::VRSkeletalMotionRange_WithController,
                                                  bone_transforms_, OPENVR_BONE_COUNT);
     vr::VRDriverInput()->UpdateSkeletonComponent(skeleton_component_handle_,
@@ -70,9 +107,7 @@ void MercuryHandDevice::UpdateHandTracking(const xrt_hand_joint_set *joint_set) 
                                                  OPENVR_BONE_COUNT);
 
 
-    //then update the position...
-
-    //yeet
+    // Calculate a new fake controller pose
     vr::DriverPose_t pose{};
     pose.qDriverFromHeadRotation.w = 1;
     pose.qWorldFromDriverRotation.w = 1;
@@ -86,6 +121,10 @@ void MercuryHandDevice::UpdateHandTracking(const xrt_hand_joint_set *joint_set) 
     vr::VRServerDriverHost()->GetRawTrackedDevicePoses(0, &hmd_pose, 1);
     vr::HmdVector3d_t hmd_position = GetPosition(hmd_pose.mDeviceToAbsoluteTracking);
     vr::HmdQuaternion_t hmd_rotation = GetRotation(hmd_pose.mDeviceToAbsoluteTracking);
+
+#if 0
+    // vr::TrackedDevicePose_t &hmd_pose = other_poses;
+
 
     pose.vecWorldFromDriverTranslation[0] = hmd_position.v[0];
     pose.vecWorldFromDriverTranslation[1] = hmd_position.v[1];
@@ -109,8 +148,43 @@ void MercuryHandDevice::UpdateHandTracking(const xrt_hand_joint_set *joint_set) 
     pose.qRotation.x = joint_set->values.hand_joint_set_default[0].relation.pose.orientation.x;
     pose.qRotation.y = joint_set->values.hand_joint_set_default[0].relation.pose.orientation.y;
     pose.qRotation.z = joint_set->values.hand_joint_set_default[0].relation.pose.orientation.z;
+#else
+    for (int i = 0; i < 3; i++) {
+        pose.vecWorldFromDriverTranslation[i] = 0.0;
+        pose.vecAngularVelocity[i] = 0.0f;
+        pose.vecVelocity[i] =  0.0f;
+    }
 
+    // pose.vecWorldFromDriverTranslation[0] = 0.0;
+    // pose.vecWorldFromDriverTranslation[1] = 0.0;
+    // pose.vecWorldFromDriverTranslation[2] = 0.0;
 
+    pose.qWorldFromDriverRotation = {1,0,0,0};
+
+    struct xrt_pose head_pose;
+    convert_quaternion(hmd_rotation, head_pose.orientation);
+    // convert_vec3(hmd_position, head_pose.position);
+    head_pose.position.x = hmd_position.v[0];
+    head_pose.position.y = hmd_position.v[1];
+    head_pose.position.z = hmd_position.v[2];
+
+    //! @todo Fragile! Depends on hand_joint_set_default->hand_relation being identity.
+    struct xrt_pose wrist_pose_in_left_camera = joint_set->values.hand_joint_set_default[0].relation.pose;
+
+    struct xrt_space_relation wrist_pose_in_global;
+    struct xrt_relation_chain xrc = {};
+    m_relation_chain_push_pose_if_not_identity(&xrc, &wrist_pose_in_left_camera);
+    m_relation_chain_push_pose_if_not_identity(&xrc, &this->left_camera_in_head);
+    m_relation_chain_push_pose_if_not_identity(&xrc, &head_pose);
+    m_relation_chain_resolve(&xrc, &wrist_pose_in_global);
+
+    pose.vecPosition[0] = wrist_pose_in_global.pose.position.x;
+    pose.vecPosition[1] = wrist_pose_in_global.pose.position.y;
+    pose.vecPosition[2] = wrist_pose_in_global.pose.position.z;
+    convert_quaternion(wrist_pose_in_global.pose.orientation, pose.qRotation);
+#endif
+
+    // Update the fake controller pose
     vr::VRServerDriverHost()->TrackedDevicePoseUpdated(device_id_, pose, sizeof(vr::DriverPose_t));
 }
 

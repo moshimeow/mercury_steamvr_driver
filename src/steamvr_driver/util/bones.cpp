@@ -132,8 +132,23 @@ HandJointSetToBoneTransform(struct xrt_hand_joint_set hand_joint_set,
                             vr::VRBoneTransform_t *out_bone_transforms,
                             vr::ETrackedControllerRole role) {
     // fill bone transforms with a default open pose to manipulate later
-    for (int i: {XRT_HAND_JOINT_WRIST, XRT_HAND_JOINT_PALM}) {
-        out_bone_transforms[i] = role == vr::TrackedControllerRole_LeftHand ? leftOpenPose[i] : rightOpenPose[i];
+
+    vr::VRBoneTransform_t ident =  {{0.000000f,  0.000000f,  0.000000f,  1.000000f}, {1.000000f,  0.000000f,  0.000000f,  0.000000f}};
+
+    for (int i: {0,1}) {
+        out_bone_transforms[i] = ident;
+    }
+
+    // I have no idea why these are required, nor why they are different per hand. (meowses)
+    if (role == vr::TrackedControllerRole_LeftHand)
+    {
+        vr::HmdQuaternionf_t x_180_z_neg90 =  {0.0, 0.707, 0.707, 0.0}; // unknown
+        out_bone_transforms[1].orientation = x_180_z_neg90; //{0.0, 1.0, 0.0, 0.0};
+    }
+
+    else {
+        vr::HmdQuaternionf_t x_180_z_90 =  {0.0, 0.707, -0.707, 0.0}; // unknown
+        out_bone_transforms[1].orientation = x_180_z_90;
     }
 
     MetacarpalJointsToBoneTransform(&hand_joint_set, out_bone_transforms, role);
@@ -142,8 +157,8 @@ HandJointSetToBoneTransform(struct xrt_hand_joint_set hand_joint_set,
 
 // these are currently only used for the root and wrist transforms, but are kept here as they are useful for debugging.
 vr::VRBoneTransform_t rightOpenPose[OPENVR_BONE_COUNT] = {
-        {{0.000000f,  0.000000f,  0.000000f,  1.000000f}, {1.000000f,  0.000000f,  0.000000f,  0.000000f}}, // Root
-        {{0.034038f,  0.036503f,  0.164722f,  1.000000f}, {-0.055147f, -0.078608f, 0.920279f,  -0.379296f}},
+        {{0.000000f,  0.000000f,  0.000000f,  1.000000f}, {1.000000f,  0.000000f,  0.000000f,  0.000000f}}, // WTF is this?
+        {{0.034038f,  0.036503f,  0.164722f,  1.000000f}, {-0.055147f, -0.078608f, 0.920279f,  -0.379296f}}, // WTF is this? Offset from Index "aim pose" to the wrist???
         //
         {{0.012083f,  0.028070f,  0.025050f,  1.000000f}, {0.567418f,  -0.464112f, 0.623374f,  -0.272106f}}, // Thumb
         {{-0.040406f, -0.000000f, 0.000000f,  1.000000f}, {0.994838f,  0.082939f,  0.019454f,  0.055130f}},

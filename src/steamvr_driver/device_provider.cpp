@@ -27,7 +27,7 @@ vr::EVRInitError DeviceProvider::Init(vr::IVRDriverContext *pDriverContext) {
     vive_config_parse(&config, j, U_LOGGING_DEBUG);
 
     struct t_stereo_camera_calibration *calib = NULL;
-    xrt_pose head_in_left; // unused
+    xrt_pose head_in_left;
     vive_get_stereo_camera_calibration(&config, &calib, &head_in_left);
 
 
@@ -83,8 +83,11 @@ vr::EVRInitError DeviceProvider::Init(vr::IVRDriverContext *pDriverContext) {
     video_input_.setRequestedMediaSubType(6);
 
     //initialise the hands
-    left_hand_ = std::make_unique<MercuryHandDevice>(vr::TrackedControllerRole_LeftHand);
-    right_hand_ = std::make_unique<MercuryHandDevice>(vr::TrackedControllerRole_RightHand);
+    left_hand_ = std::make_unique<MercuryHandDevice>(vr::TrackedControllerRole_LeftHand, head_in_left);
+    right_hand_ = std::make_unique<MercuryHandDevice>(vr::TrackedControllerRole_RightHand, head_in_left);
+
+    
+    // vr::TrackedDeviceClass_GenericTracker seems to not work
 
     vr::VRServerDriverHost()->TrackedDeviceAdded(left_hand_->GetSerialNumber().c_str(),
                                                  vr::TrackedDeviceClass_Controller,
