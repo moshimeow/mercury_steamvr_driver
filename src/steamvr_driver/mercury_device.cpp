@@ -82,10 +82,8 @@ void MercuryHandDevice::UpdateHandTracking(const xrt_hand_joint_set *joint_set) 
     pose.poseTimeOffset = 0;
     pose.result = vr::TrackingResult_Running_OK;
 
-    vr::TrackedDevicePose_t other_poses[1];
-    vr::VRServerDriverHost()->GetRawTrackedDevicePoses(0, other_poses, 1);
-
-    vr::TrackedDevicePose_t &hmd_pose = other_poses[0];
+    vr::TrackedDevicePose_t hmd_pose;
+    vr::VRServerDriverHost()->GetRawTrackedDevicePoses(0, &hmd_pose, 1);
     vr::HmdVector3d_t hmd_position = GetPosition(hmd_pose.mDeviceToAbsoluteTracking);
     vr::HmdQuaternion_t hmd_rotation = GetRotation(hmd_pose.mDeviceToAbsoluteTracking);
 
