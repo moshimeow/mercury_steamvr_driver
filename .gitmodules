@@ -1,6 +1,9 @@
 [submodule "monado"]
 	path = monado
-	url = ./monado
+	url = https://gitlab.freedesktop.org/slitcch/monado.git
+	branch = mt/win32-hand-tracking
+	
 [submodule "hand-tracking-models"]
 	path = hand-tracking-models
-	url = ./hand-tracking-models/
+	url = https://gitlab.freedesktop.org/monado/utilities/hand-tracking-models.git
+	branch = master
