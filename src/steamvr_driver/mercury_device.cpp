@@ -19,13 +19,13 @@ vr::EVRInitError MercuryHandDevice::Activate(uint32_t unObjectId) {
     vr::VRProperties()->SetBoolProperty(props, vr::Prop_DeviceIsCharging_Bool, false);
     vr::VRProperties()->SetBoolProperty(props, vr::Prop_DeviceCanPowerOff_Bool, false);
     vr::VRProperties()->SetBoolProperty(props, vr::Prop_Identifiable_Bool, false);
-    vr::VRProperties()->SetStringProperty(props, vr::Prop_ResourceRoot_String, "indexcontroller");
-    vr::VRProperties()->SetStringProperty(props, vr::Prop_RegisteredDeviceType_String,
-                                          IsLeftHand() ? "valve/index_controllerLHR-E217CD00"
-                                                       : "valve/index_controllerLHR-E217CD01");
-    vr::VRProperties()->SetStringProperty(props, vr::Prop_ControllerType_String, "knuckles");
-    vr::VRProperties()->SetStringProperty(props, vr::Prop_ManufacturerName_String, "danwillm");
-    vr::VRProperties()->SetStringProperty(props, vr::Prop_RenderModelName_String, !IsLeftHand() ? "{indexcontroller}valve_controller_knu_1_0_right" : "{indexcontroller}valve_controller_knu_1_0_left");
+    vr::VRProperties()->SetStringProperty(props, vr::Prop_ResourceRoot_String, "mercury");
+    // vr::VRProperties()->SetStringProperty(props, vr::Prop_RegisteredDeviceType_String,
+    //                                       IsLeftHand() ? "valve/index_controllerLHR-E217CD00"
+    //                                                    : "valve/index_controllerLHR-E217CD01");
+    vr::VRProperties()->SetStringProperty(props, vr::Prop_ControllerType_String, "mercury_fake_controller");
+    vr::VRProperties()->SetStringProperty(props, vr::Prop_ManufacturerName_String, "collabora");
+    // vr::VRProperties()->SetStringProperty(props, vr::Prop_RenderModelName_String, !IsLeftHand() ? "{indexcontroller}valve_controller_knu_1_0_right" : "{indexcontroller}valve_controller_knu_1_0_left");
 
 
     vr::VRDriverInput()->CreateSkeletonComponent(
