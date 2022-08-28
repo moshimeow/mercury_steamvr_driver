@@ -17,7 +17,7 @@ vr::EVRInitError DeviceProvider::Init(vr::IVRDriverContext *pDriverContext) {
     std::string hmd_config;
     if (!GetHMDConfig(hmd_config)) {
         DriverLog("Failed to find HMD config. Exiting.");
-        return vr::VRInitError_Init_FileNotFound;
+        return vr::VRInitError_Driver_CalibrationInvalid;
     }
 
     struct vive_config config = {};
