@@ -20,11 +20,12 @@ vr::EVRInitError MercuryHandDevice::Activate(uint32_t unObjectId) {
     vr::VRProperties()->SetBoolProperty(props, vr::Prop_DeviceCanPowerOff_Bool, false);
     vr::VRProperties()->SetBoolProperty(props, vr::Prop_Identifiable_Bool, false);
     vr::VRProperties()->SetStringProperty(props, vr::Prop_ResourceRoot_String, "mercury");
-    // vr::VRProperties()->SetStringProperty(props, vr::Prop_RegisteredDeviceType_String,
-    //                                       IsLeftHand() ? "valve/index_controllerLHR-E217CD00"
-    //                                                    : "valve/index_controllerLHR-E217CD01");
-    vr::VRProperties()->SetStringProperty(props, vr::Prop_ControllerType_String, "mercury_fake_controller");
+     vr::VRProperties()->SetStringProperty(props, vr::Prop_RegisteredDeviceType_String,
+                                           IsLeftHand() ? "collabora/mercury_hand_l"
+                                                        : "collabora/mercury_hand_r");
+    vr::VRProperties()->SetStringProperty(props, vr::Prop_ControllerType_String, "mercury_hands");
     vr::VRProperties()->SetStringProperty(props, vr::Prop_ManufacturerName_String, "collabora");
+    vr::VRProperties()->SetStringProperty(props, vr::Prop_TrackingSystemName_String, "mercury_hand_tracking");
     // vr::VRProperties()->SetStringProperty(props, vr::Prop_RenderModelName_String, !IsLeftHand() ? "{indexcontroller}valve_controller_knu_1_0_right" : "{indexcontroller}valve_controller_knu_1_0_left");
 
 
@@ -39,8 +40,9 @@ vr::EVRInitError MercuryHandDevice::Activate(uint32_t unObjectId) {
             &skeleton_component_handle_);
 
     // below, as-is, broke hand tracking input. Unsure.
-    // vr::VRProperties()->SetInt32Property(props, vr::Prop_ControllerRoleHint_Int32, IsLeftHand() ? vr::TrackedControllerRole_RightHand : vr::TrackedControllerRole_LeftHand);
-
+    // The role hint is different from the role, so this should be fine.
+    //vr::VRProperties()->SetInt32Property(props, vr::Prop_ControllerRoleHint_Int32, IsLeftHand() ? vr::TrackedControllerRole_RightHand : vr::TrackedControllerRole_LeftHand);
+    vr::VRProperties()->SetUint64Property(props, vr::Prop_SupportedButtons_Uint64, 0);
 
     this->has_activated_ = true;
 
