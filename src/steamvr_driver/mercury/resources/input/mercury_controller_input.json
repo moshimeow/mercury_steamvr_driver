@@ -1,0 +1,31 @@
+{
+	"jsonid": "input_profile",
+	"controller_type" : "mercury_hands",
+	"device_class" : "TrackedDeviceClass_Controller",
+	"resource_root" : "mercury",
+	"driver_name" : "mercury",
+	"input_bindingui_mode" : "controller_handed",
+	"should_show_binding_errors": true,
+	"input_source" :
+	{
+		"/pose/raw" : 
+		{
+			"type" : "pose",
+			"binding_image_point" : [ 5, 35 ]
+		},
+		"/input/skeleton/left" : 
+		{
+			"type" : "skeleton",
+			"skeleton": "/skeleton/hand/left",
+			"side" : "left",
+			"binding_image_point" : [ 5, 35 ]
+		},
+		"/input/skeleton/right" : 
+		{
+			"type" : "skeleton",
+			"skeleton": "/skeleton/hand/right",
+			"side" : "right",
+			"binding_image_point" : [ 5, 35 ]
+		}
+	}
+}
