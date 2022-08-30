@@ -20,12 +20,21 @@ vr::EVRInitError MercuryHandDevice::Activate(uint32_t unObjectId) {
     vr::VRProperties()->SetBoolProperty(props, vr::Prop_DeviceCanPowerOff_Bool, false);
     vr::VRProperties()->SetBoolProperty(props, vr::Prop_Identifiable_Bool, false);
     vr::VRProperties()->SetStringProperty(props, vr::Prop_ResourceRoot_String, "mercury");
-     vr::VRProperties()->SetStringProperty(props, vr::Prop_RegisteredDeviceType_String,
+
+    // these registered device type strings used to point to index controllers,
+    // I changed them to mercury hands, but either way, including them causes the hand tracking
+    // to break.
+    /*vr::VRProperties()->SetStringProperty(props, vr::Prop_RegisteredDeviceType_String,
                                            IsLeftHand() ? "collabora/mercury_hand_l"
-                                                        : "collabora/mercury_hand_r");
+                                                        : "collabora/mercury_hand_r");*/
     vr::VRProperties()->SetStringProperty(props, vr::Prop_ControllerType_String, "mercury_hands");
     vr::VRProperties()->SetStringProperty(props, vr::Prop_ManufacturerName_String, "collabora");
     vr::VRProperties()->SetStringProperty(props, vr::Prop_TrackingSystemName_String, "mercury_hand_tracking");
+
+    // we need to supply a controller profile so that bindings can work.
+    // this path might be wrong. I checked the documentation though, and the docs say it is
+    // using the right form.
+    vr::VRProperties()->SetStringProperty(props, vr::Prop_InputProfilePath_String, "/resources/input/mercury_controller_profile.json");
     // vr::VRProperties()->SetStringProperty(props, vr::Prop_RenderModelName_String, !IsLeftHand() ? "{indexcontroller}valve_controller_knu_1_0_right" : "{indexcontroller}valve_controller_knu_1_0_left");
 
 
