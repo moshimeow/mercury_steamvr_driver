@@ -3,10 +3,7 @@
     "homepage": "https://monado.freedesktop.org",
     "version-string": "21.0",
     "dependencies": [
-        {
-            "name": "wil",
-            "platform": "windows"
-        },
+
         {
             "name": "pthreads",
             "platform": "windows"

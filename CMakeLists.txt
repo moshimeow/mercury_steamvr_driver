@@ -45,6 +45,9 @@ set(XRT_FEATURE_CLIENT_DEBUG_GUI OFF)
 set(XRT_FEATURE_STANDALONE_VIVE_CONFIG ON)
 set(XRT_FEATURE_STANDALONE_MERCURY_HANDTRACKING ON)
 
+set(XRT_HAVE_D3D11 OFF)
+set(XRT_HAVE_D3D12 OFF)
+
 
 # Make sure we have pretty colours
 option (FORCE_COLORED_OUTPUT "Always produce ANSI-colored output (GNU/Clang only)." TRUE)
