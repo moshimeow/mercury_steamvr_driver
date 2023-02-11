@@ -32,7 +32,9 @@ Write-Output "installdir:$installdir"
 Write-Output "sourcedir:$sourcedir"
 Write-Output "toolchainfile:$toolchainfile"
 
-$installPath = & "C:\Program Files (x86)\Microsoft Visual Studio\Installer\vswhere.exe" -property installationpath
+# I don't understand this at all. This string ends up finding VS 2019 on my machine (but *NOT* VS 2022, which is what we want), and may work for yours. Patches very welcome.
+$version = '[16.0,17.0]'
+$installPath = & "C:\Program Files (x86)\Microsoft Visual Studio\Installer\vswhere.exe" -version $version -property installationpath
 Write-Output "vswhere.exe installPath: $installPath"
 # $installPath = "C:\BuildTools"
 # Write-Output "Final installPath: $installPath"
