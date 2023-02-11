@@ -9,6 +9,10 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+# Get Monado's CMake modules
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/monado/cmake")
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/monado/cmake/sanitizers")
+
 
 if(NOT MSVC)
 	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -pedantic -Wall -Wextra -Wno-unused-parameter -Werror=incompatible-pointer-types")
@@ -37,20 +41,16 @@ set(XRT_FEATURE_SLAM OFF) #Not using it
 
 set(XRT_FEATURE_CLIENT_DEBUG_GUI OFF)
 
-set(XRT_HAVE_SDL2 OFF) # Don't need this - for debug UI
 
 set(XRT_FEATURE_STANDALONE_VIVE_CONFIG ON)
 set(XRT_FEATURE_STANDALONE_MERCURY_HANDTRACKING ON)
 
 
-# should be unnecessary but VS caching. delete later.
-set(XRT_BUILD_DRIVER_VIVE OFF)
-set(XRT_BUILD_DRIVER_HANDTRACKING OFF)
-set(XRT_BUILD_DRIVER_EUROC OFF)
-
-
 # Make sure we have pretty colours
 option (FORCE_COLORED_OUTPUT "Always produce ANSI-colored output (GNU/Clang only)." TRUE)
+
+set(ONNXRuntime_LIBRARY "${CMAKE_CURRENT_SOURCE_DIR}\\deps\\onnxruntime\\onnxruntime-win-x64-1.13.1\\lib\\onnxruntime.lib")
+set(ONNXRuntime_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}\\deps\\onnxruntime\\onnxruntime-win-x64-1.13.1\\include")
 
 add_subdirectory(monado)
 
