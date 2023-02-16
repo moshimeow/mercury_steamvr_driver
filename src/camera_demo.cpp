@@ -45,7 +45,7 @@ std::string read_file(std::string_view path) {
 
 int main() {
 
-	std::string t20_config = read_file("C:\\dev\\ht_windows_steamvr_2\\T20_config.json");
+	std::string t20_config = read_file("C:\\dev\\mercury_steamvr_driver\\T20_config.json");
 
 	std::cout << t20_config << std::endl;
 
@@ -67,9 +67,14 @@ int main() {
 	vive_get_stereo_camera_calibration(&c, &calib, &head_in_left);
 
 
-struct t_image_boundary_info info;
-	info.views[0].type = HT_IMAGE_BOUNDARY_CIRCLE;
-	info.views[1].type = HT_IMAGE_BOUNDARY_CIRCLE;
+	// zero-initialized out of paranoia
+	struct t_camera_extra_info info = {};
+
+	info.views[0].camera_orientation = CAMERA_ORIENTATION_0;
+	info.views[1].camera_orientation = CAMERA_ORIENTATION_0;
+
+	info.views[0].boundary_type = HT_IMAGE_BOUNDARY_CIRCLE;
+	info.views[1].boundary_type = HT_IMAGE_BOUNDARY_CIRCLE;
 
 
 	//!@todo This changes by like 50ish pixels from device to device. For now, the solution is simple: just
@@ -86,7 +91,7 @@ struct t_image_boundary_info info;
 	info.views[1].boundary.circle.normalized_radius = 0.55;
 
 struct t_hand_tracking_sync * sync =
-	t_hand_tracking_sync_mercury_create(calib, info);
+	t_hand_tracking_sync_mercury_create(calib, info, "C:\\dev\\mercury_steamvr_driver\\hand-tracking-models\\");
 
 
 	videoInput in;

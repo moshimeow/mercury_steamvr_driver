@@ -35,21 +35,28 @@ vr::EVRInitError DeviceProvider::Init(vr::IVRDriverContext *pDriverContext) {
     //! make the circle a bit bigger than we'd like.
     // Maybe later we can do vignette calibration? Write a tiny optimizer that tries to fit Index's
     // gradient? Unsure.
-    struct t_image_boundary_info info;
-    info.views[0].type = HT_IMAGE_BOUNDARY_CIRCLE;
-    info.views[1].type = HT_IMAGE_BOUNDARY_CIRCLE;
+struct t_camera_extra_info info;
+	info.views[0].boundary_type = HT_IMAGE_BOUNDARY_CIRCLE;
+	info.views[1].boundary_type = HT_IMAGE_BOUNDARY_CIRCLE;
 
-    info.views[0].boundary.circle.normalized_center.x = 0.5f;
-    info.views[0].boundary.circle.normalized_center.y = 0.5f;
 
-    info.views[1].boundary.circle.normalized_center.x = 0.5f;
-    info.views[1].boundary.circle.normalized_center.y = 0.5f;
+	//!@todo This changes by like 50ish pixels from device to device. For now, the solution is simple: just
+	//! make the circle a bit bigger than we'd like.
+	// Maybe later we can do vignette calibration? Write a tiny optimizer that tries to fit Index's
+	// gradient? Unsure.
+	info.views[0].boundary.circle.normalized_center.x = 0.5f;
+	info.views[0].boundary.circle.normalized_center.y = 0.5f;
 
-    info.views[0].boundary.circle.normalized_radius = 0.55;
-    info.views[1].boundary.circle.normalized_radius = 0.55;
+	info.views[1].boundary.circle.normalized_center.x = 0.5f;
+	info.views[1].boundary.circle.normalized_center.y = 0.5f;
 
+	info.views[0].boundary.circle.normalized_radius = 0.5;
+	info.views[1].boundary.circle.normalized_radius = 0.5;
+
+    info.views[0].camera_orientation = CAMERA_ORIENTATION_0;
+    info.views[1].camera_orientation = CAMERA_ORIENTATION_0;
     struct t_hand_tracking_sync *sync =
-            t_hand_tracking_sync_mercury_create(calib, info);
+	t_hand_tracking_sync_mercury_create(calib, info, "C:\\dev\\mercury_steamvr_driver\\hand-tracking-models\\");
 
     video_input_.setVerbose(true);
     int num_devices = video_input_.listDevices();
