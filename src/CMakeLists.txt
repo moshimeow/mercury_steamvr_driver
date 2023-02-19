@@ -9,7 +9,12 @@ target_link_libraries(
 	${OpenCV_LIBRARIES}
   xrt-interfaces aux_util aux_vive t_ht_mercury
   meow_oxr_sdl2
+  hand_async
+  #escapi_dll
+  #escapi_interface
 )
+
+
 
 target_include_directories(
 	THINGY
@@ -17,6 +22,35 @@ target_include_directories(
   # xrt-interfaces
   # aux_vive
 )
+
+
+
+
+add_executable(
+	THINGY2 	camera_demo_2.cpp 
+)
+
+target_link_libraries(
+	THINGY2
+	PRIVATE
+	${OpenCV_LIBRARIES}
+  xrt-interfaces aux_util aux_vive t_ht_mercury
+  meow_oxr_sdl2
+  hand_async
+  #escapi_dll
+  #escapi_interface
+)
+
+
+
+target_include_directories(
+	THINGY2
+	PRIVATE
+  # xrt-interfaces
+  # aux_vive
+)
+
+
 
 
 

@@ -94,11 +94,12 @@ int main() {
 	info.views[0].boundary.circle.normalized_radius = 0.55;
 	info.views[1].boundary.circle.normalized_radius = 0.55;
 
-struct t_hand_tracking_sync * sync =
+	struct t_hand_tracking_sync * sync =
 	t_hand_tracking_sync_mercury_create(calib, info, "C:\\dev\\mercury_steamvr_driver\\hand-tracking-models\\");
 
+	xrt_frame_context blah = {};
 
-
+    t_hand_tracking_async *async = t_hand_tracking_async_default_create(&blah, sync);
 
 	videoInput in;
 
@@ -125,7 +126,7 @@ struct t_hand_tracking_sync * sync =
 		abort();
 	}
 
-	in.setUseCallback(false);
+	in.setUseCallback(true);
 	in.setIdealFramerate(wanted_idx, 54);
 	in.setupDevice(wanted_idx, 1920, 960);
 
@@ -174,9 +175,13 @@ struct t_hand_tracking_sync * sync =
 			xat::FrameMat::wrapL8(mats_grayscale[i], &frames[i], params);
 
 		}
-		struct xrt_hand_joint_set hands[2];
-		uint64_t out_timestamp;
-t_ht_sync_process(sync, frames[0], frames[1], &hands[0], &hands[1], &out_timestamp);
+		U_LOG_E("about to push");
+		xrt_sink_push_frame(async->sinks.left, frames[0]);
+        xrt_sink_push_frame(async->sinks.right, frames[1]);
+		U_LOG_E("done pushing");
+// 		struct xrt_hand_joint_set hands[2];
+// 		uint64_t out_timestamp;
+// t_ht_sync_process(sync, frames[0], frames[1], &hands[0], &hands[1], &out_timestamp);
 
 
 
