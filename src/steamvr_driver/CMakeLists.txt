@@ -1,6 +1,19 @@
 # Copyright 2020-2021, Collabora, Ltd.
 # SPDX-License-Identifier: BSL-1.0
 
+add_library(meow_oxr_sdl2 STATIC oxr_sdl2_hack.c)
+target_link_libraries(meow_oxr_sdl2 PRIVATE aux_util)
+if(XRT_HAVE_OPENGL)
+	target_link_libraries(meow_oxr_sdl2 PUBLIC aux_ogl)
+endif()
+if(XRT_HAVE_SDL2)
+	target_link_libraries(meow_oxr_sdl2 PRIVATE st_gui xrt-external-imgui-sdl2 ${SDL2_LIBRARIES})
+
+	if(XRT_BUILD_DRIVER_QWERTY)
+		target_link_libraries(meow_oxr_sdl2 PRIVATE drv_qwerty drv_qwerty_includes)
+	endif()
+endif()
+
 add_library(driver_mercury MODULE driver_factory.cpp device_provider.h device_provider.cpp mercury_device.h mercury_device.cpp util/driver_log.h util/driver_log.cpp util/win_utils.h util/win_utils.cpp util/vr_utils.h util/vr_utils.cpp util/video_input.h util/video_input.cpp util/bones.h util/bones.cpp)
 
 
@@ -13,6 +26,7 @@ target_link_libraries(
         xrt-interfaces
         aux_vive
         t_ht_mercury # XXX meowses, 8/27: this results in link failure? Really shouldn't... 
+        meow_oxr_sdl2
         # st_ovrd
         # st_prober
         # target_lists

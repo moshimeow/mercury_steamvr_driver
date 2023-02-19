@@ -5,8 +5,23 @@
 #include "../../monado/src/xrt/tracking/hand/mercury/hg_interface.h"
 #include "tracking/t_frame_cv_mat_wrapper.hpp"
 #include "os/os_time.h"
+#include "oxr_sdl2_hack.h"
 
 namespace xat = xrt::auxiliary::tracking;
+
+
+// // I'm cargo-culting this. I have no idea why we're not just using a header. Probably fix soon.
+// /* ---- HACK ---- */
+// extern int
+// oxr_sdl2_hack_create(void **out_hack);
+
+// // Why are we using xinst or xsysd? wtf is this shit
+// extern void
+// oxr_sdl2_hack_start(void *hack, struct xrt_instance *xinst, struct xrt_system_devices *xsysd);
+
+// extern void
+// oxr_sdl2_hack_stop(void **hack_ptr);
+// /* ---- HACK ---- */
 
 vr::EVRInitError DeviceProvider::Init(vr::IVRDriverContext *pDriverContext) {
     VR_INIT_SERVER_DRIVER_CONTEXT(pDriverContext);
@@ -29,6 +44,10 @@ vr::EVRInitError DeviceProvider::Init(vr::IVRDriverContext *pDriverContext) {
     struct t_stereo_camera_calibration *calib = NULL;
     xrt_pose head_in_left;
     vive_get_stereo_camera_calibration(&config, &calib, &head_in_left);
+
+    oxr_sdl2_hack_create(&this->sdl2_hack);
+    oxr_sdl2_hack_start(this->sdl2_hack, NULL, NULL);
+
 
 
     //!@todo This changes by like 50ish pixels from device to device. For now, the solution is simple: just
@@ -55,6 +74,7 @@ struct t_camera_extra_info info;
 
     info.views[0].camera_orientation = CAMERA_ORIENTATION_0;
     info.views[1].camera_orientation = CAMERA_ORIENTATION_0;
+
     struct t_hand_tracking_sync *sync =
 	t_hand_tracking_sync_mercury_create(calib, info, "C:\\dev\\mercury_steamvr_driver\\hand-tracking-models\\");
 
@@ -105,6 +125,7 @@ struct t_camera_extra_info info;
 
     is_active_ = true;
     hand_tracking_thread_ = std::thread(&DeviceProvider::HandTrackingThread, this, sync, wanted_idx);
+
 
     return vr::VRInitError_None;
 }
@@ -186,4 +207,5 @@ void DeviceProvider::Cleanup() {
 
         DriverLog("Hand tracking shutdown.");
     }
+    oxr_sdl2_hack_stop(&this->sdl2_hack);
 }

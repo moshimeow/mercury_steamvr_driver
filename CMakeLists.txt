@@ -31,7 +31,6 @@ set(XRT_FEATURE_COMPOSITOR_MAIN OFF) # we are not using this
 set(XRT_FEATURE_COMPOSITOR_NULL OFF) # we are not using this
 set(XRT_FEATURE_OPENXR OFF) # we need to replace this to pull together a different combination of modules
 set(XRT_FEATURE_IPC OFF)
-set(XRT_FEATURE_OPENXR OFF)
 set(XRT_FEATURE_RENDERDOC OFF)
 set(XRT_FEATURE_SERVICE OFF)
 set(XRT_FEATURE_SERVICE_SYSTEMD OFF)
@@ -191,6 +190,7 @@ target_link_libraries(
 	PRIVATE
 	${OpenCV_LIBRARIES}
   xrt-interfaces aux_util aux_vive t_ht_mercury
+  meow_oxr_sdl2
 )
 
 target_include_directories(
@@ -201,7 +201,7 @@ target_include_directories(
 )
 
 
-
+add_subdirectory(escapi)
 add_subdirectory(src)
 
 #target_include_directories(

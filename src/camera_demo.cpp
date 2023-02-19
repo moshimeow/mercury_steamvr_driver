@@ -24,6 +24,7 @@
 #include "../monado/src/xrt/tracking/hand/mercury/hg_interface.h"
 
 #include "os/os_time.h"
+#include "steamvr_driver/oxr_sdl2_hack.h"
 
 namespace xat = xrt::auxiliary::tracking;
 
@@ -66,7 +67,10 @@ int main() {
 
 	vive_get_stereo_camera_calibration(&c, &calib, &head_in_left);
 
+	void *sdl2_hack;
 
+    oxr_sdl2_hack_create(&sdl2_hack);
+    oxr_sdl2_hack_start(sdl2_hack, NULL, NULL);
 	// zero-initialized out of paranoia
 	struct t_camera_extra_info info = {};
 
@@ -92,6 +96,8 @@ int main() {
 
 struct t_hand_tracking_sync * sync =
 	t_hand_tracking_sync_mercury_create(calib, info, "C:\\dev\\mercury_steamvr_driver\\hand-tracking-models\\");
+
+
 
 
 	videoInput in;

@@ -13,14 +13,12 @@
 
 //Include Directshow stuff here so we don't worry about needing all the h files.
 #include <dshow.h>
-//#include "streams.h"
 #pragma include_alias( "dxtrans.h", "qedit.h" )
 #define __IDxtCompositor_INTERFACE_DEFINED__
 #define __IDxtAlphaSetter_INTERFACE_DEFINED__
 #define __IDxtJpeg_INTERFACE_DEFINED__
 #define __IDxtKey_INTERFACE_DEFINED__
 #include <uuids.h>
-#include <aviriff.h>
 #include <windows.h>
 
 //for threading
