@@ -1,5 +1,5 @@
 #include "device_provider.h"
-#include "util/vr_utils.h"
+#include "util/path_utils.h"
 #include "driver_log.h"
 #include "vive/vive_config.h"
 #include "../../monado/src/xrt/tracking/hand/mercury/hg_interface.h"
@@ -171,7 +171,7 @@ void DeviceProvider::HandTrackingThread(t_hand_tracking_sync *sync, int camera_i
         }
 
 
-        DriverLog("meow DIFF %f %f %f %f", time_diff_ms, time_now, time_camera, time_ratio);
+        // DriverLog("meow DIFF %f %f %f %f", time_diff_ms, time_now, time_camera, time_ratio);
     }
 
     cap.release();

@@ -46,7 +46,7 @@ std::string read_file(std::string_view path) {
 
 int main() {
 
-	std::string t20_config = read_file("C:\\dev\\mercury_steamvr_driver\\T20_config.json");
+	std::string t20_config = read_file("C:\\dev\\mercury_steamvr_driver\\attic\\T20_config.json");
 
 	std::cout << t20_config << std::endl;
 

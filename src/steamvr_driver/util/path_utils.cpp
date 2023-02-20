@@ -1,8 +1,19 @@
+// Copyright 2022-2023, Moshi Turner
+// Copyright 2022, Daniel Willmott
+// SPDX-License-Identifier: BSL-1.0
+/*!
+ * @file
+ * @brief  Utilities to find paths of things.
+ * @author Moshi Turner <mosesturner@protonmail.com>
+ * @author Daniel Willmott <web@dan-w.com>
+ */
+
+
 #include <filesystem>
 #include <regex>
 #include <fstream>
 
-#include "vr_utils.h"
+#include "path_utils.h"
 #include "win_utils.h"
 #include "driver_log.h"
 

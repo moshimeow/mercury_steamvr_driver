@@ -8,3 +8,5 @@
 bool GetDriverRootPath(std::string& out_path);
 
 bool GetHMDConfig(std::string &out_path, bool pull = true);
+
+// bool GetHandTrackingModelsPath(std::);

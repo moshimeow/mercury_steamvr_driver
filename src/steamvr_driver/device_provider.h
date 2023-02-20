@@ -6,7 +6,6 @@
 
 #include "openvr_driver.h"
 
-#include "util/video_input.h"
 #include "mercury_device.h"
 
 class DeviceProvider : public vr::IServerTrackedDeviceProvider {

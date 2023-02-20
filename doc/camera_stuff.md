@@ -31,3 +31,11 @@ strmif.h IMediaSample GetMediaTime
 
 
 https://github.com/opencv/opencv/issues/17687#issuecomment-800227819
+
+
+
+I finally seem to have a good solution getting timestamped video frames on Windows, and the delay between capture and arrival is about 17ms
+(which is intriguing because that's just about the index's frametime)
+moshi — Today at 7:19 AM
+[hmm I'm seeing it jump around, lowest i've seen is 4ms highest i've seen is like 30]
+it doesn't change that quickly so i'm not worried, and tbh i've never looked at this on Linux

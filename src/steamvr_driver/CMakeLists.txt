@@ -17,7 +17,12 @@ endif()
 
 
 
-add_library(driver_mercury MODULE driver_factory.cpp device_provider.h device_provider.cpp mercury_device.h mercury_device.cpp util/win_utils.h util/win_utils.cpp util/vr_utils.h util/vr_utils.cpp util/video_input.h util/video_input.cpp util/bones.h util/bones.cpp)
+add_library(driver_mercury MODULE driver_factory.cpp 
+                device_provider.h device_provider.cpp
+                mercury_device.h mercury_device.cpp
+                util/win_utils.h util/win_utils.cpp
+                util/path_utils.h util/path_utils.cpp
+                util/bones.h util/bones.cpp)
 
 
 target_link_libraries(
