@@ -1,13 +1,17 @@
 import cv2
 import time
 
-if True:
+if False:
     cap = cv2.VideoCapture()
 
     cap.open(1, cv2.CAP_DSHOW)
 else:
-    cap = cv2.VideoCapture(1)
-    print(cap.getBackendName())
+    # :) Yeah this seems to work :D
+    cap = cv2.VideoCapture(1, cv2.CAP_MSMF, (cv2.CAP_PROP_HW_ACCELERATION, cv2.VIDEO_ACCELERATION_NONE))
+    
+    # :(
+    # cap = cv2.VideoCapture(1, cv2.CAP_MSMF)
+    # print(cap.getBackendName())
 # print(cap.get)
 blah = cap.get(cv2.CAP_PROP_FOURCC )
 # print(blah)
