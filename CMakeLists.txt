@@ -100,7 +100,6 @@ message("${CMAKE_CURRENT_SOURCE_DIR}")
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/")
 
 
-
 find_package(
 	OpenCV
 	REQUIRED
@@ -117,6 +116,4 @@ find_package(
 
 
 
-
-add_subdirectory(escapi)
 add_subdirectory(src)

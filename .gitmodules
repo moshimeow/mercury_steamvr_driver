@@ -8,5 +8,5 @@
 	url = https://gitlab.freedesktop.org/monado/utilities/hand-tracking-models.git
 	branch = master
 [submodule "escapi"]
-	path = escapi
+	path = attic/escapi
 	url = https://github.com/moshimeow/escapi_with_timestamps.git
