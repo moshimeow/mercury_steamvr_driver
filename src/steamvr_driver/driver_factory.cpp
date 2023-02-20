@@ -2,7 +2,7 @@
 
 #include "device_provider.h"
 
-#include "util/driver_log.h"
+#include "driver_log.h"
 
 #if defined(_WIN32)
 #define HMD_DLL_EXPORT extern "C" __declspec(dllexport)

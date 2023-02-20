@@ -1,6 +1,6 @@
 #include "mercury_device.h"
 
-#include "util/driver_log.h"
+#include "driver_log.h"
 
 MercuryHandDevice::MercuryHandDevice(vr::ETrackedControllerRole role, struct xrt_pose in_head_in_left) {
     role_ = role;

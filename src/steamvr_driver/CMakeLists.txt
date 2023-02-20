@@ -14,7 +14,10 @@ if(XRT_HAVE_SDL2)
 	endif()
 endif()
 
-add_library(driver_mercury MODULE driver_factory.cpp device_provider.h device_provider.cpp mercury_device.h mercury_device.cpp util/driver_log.h util/driver_log.cpp util/win_utils.h util/win_utils.cpp util/vr_utils.h util/vr_utils.cpp util/video_input.h util/video_input.cpp util/bones.h util/bones.cpp)
+
+
+
+add_library(driver_mercury MODULE driver_factory.cpp device_provider.h device_provider.cpp mercury_device.h mercury_device.cpp util/win_utils.h util/win_utils.cpp util/vr_utils.h util/vr_utils.cpp util/video_input.h util/video_input.cpp util/bones.h util/bones.cpp)
 
 
 target_link_libraries(
@@ -27,6 +30,7 @@ target_link_libraries(
         aux_vive
         t_ht_mercury # XXX meowses, 8/27: this results in link failure? Really shouldn't... 
         meow_oxr_sdl2
+        meow_util
         # st_ovrd
         # st_prober
         # target_lists

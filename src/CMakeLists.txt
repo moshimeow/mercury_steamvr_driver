@@ -37,6 +37,7 @@ target_link_libraries(
   xrt-interfaces aux_util aux_vive t_ht_mercury
   meow_oxr_sdl2
   hand_async
+  meow_util
   #escapi_dll
   #escapi_interface
 )
@@ -70,5 +71,5 @@ target_link_libraries(
 
 
 
-
+add_subdirectory(util)
 add_subdirectory(steamvr_driver)

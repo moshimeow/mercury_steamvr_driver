@@ -1,11 +1,12 @@
 #include "device_provider.h"
 #include "util/vr_utils.h"
-#include "util/driver_log.h"
+#include "driver_log.h"
 #include "vive/vive_config.h"
 #include "../../monado/src/xrt/tracking/hand/mercury/hg_interface.h"
 #include "tracking/t_frame_cv_mat_wrapper.hpp"
 #include "os/os_time.h"
 #include "oxr_sdl2_hack.h"
+#include "CameraIdxGuesser.hpp"
 
 namespace xat = xrt::auxiliary::tracking;
 
@@ -27,6 +28,12 @@ vr::EVRInitError DeviceProvider::Init(vr::IVRDriverContext *pDriverContext)
     VR_INIT_SERVER_DRIVER_CONTEXT(pDriverContext);
 
     InitDriverLog(vr::VRDriverLog());
+
+    int match_idx = GetIndexIndex();
+    if (match_idx == -1) {
+        return vr::VRInitError_Driver_CalibrationInvalid;
+    }
+    this->camera_idx = match_idx;
 
     // initialise hand tracking
     std::string hmd_config;
@@ -77,40 +84,6 @@ vr::EVRInitError DeviceProvider::Init(vr::IVRDriverContext *pDriverContext)
 
     // oxr_sdl2_hack_start(this->sdl2_hack, NULL, NULL);
 
-    video_input_.setVerbose(true);
-    int num_devices = video_input_.listDevices();
-    DriverLog("Devices found: %i", num_devices);
-
-    std::vector<std::string> devs = video_input_.getDeviceList();
-
-    int wanted_idx = 0;
-    bool is_camera = false;
-    for (int i = 0; i < devs.size(); i++)
-    {
-        std::cout << devs[i] << std::endl;
-        is_camera = devs[i] == "eTronVideo";
-        std::cout << is_camera << std::endl;
-        if (is_camera)
-        {
-            wanted_idx = i;
-            is_camera = true;
-            break;
-        }
-    }
-    if (!is_camera)
-    {
-        DriverLog("Unable to find camera on device!");
-
-        // ¯\_(ツ)_/¯
-        return vr::VRInitError_Driver_CalibrationInvalid;
-    }
-
-    // This seems to correctly limit it to 54Hz
-    video_input_.setUseCallback(true);
-    video_input_.setIdealFramerate(wanted_idx, 54);
-    video_input_.setupDevice(wanted_idx, 1920, 960);
-
-    video_input_.setRequestedMediaSubType(6);
 
     // initialise the hands
     left_hand_ = std::make_unique<MercuryHandDevice>(vr::TrackedControllerRole_LeftHand, head_in_left);
@@ -126,50 +99,67 @@ vr::EVRInitError DeviceProvider::Init(vr::IVRDriverContext *pDriverContext)
                                                  right_hand_.get());
 
     is_active_ = true;
-    hand_tracking_thread_ = std::thread(&DeviceProvider::HandTrackingThread, this, sync, wanted_idx);
+    hand_tracking_thread_ = std::thread(&DeviceProvider::HandTrackingThread, this, sync, match_idx);
 
     return vr::VRInitError_None;
 }
 
 void DeviceProvider::HandTrackingThread(t_hand_tracking_sync *sync, int camera_id)
 {
-    int width = video_input_.getWidth(camera_id);
-    int height = video_input_.getHeight(camera_id);
-    int size = video_input_.getSize(camera_id);
-    DriverLog("Height: %i, Width: %i, Size: %i", height, width, size);
+    cv::VideoCapture cap(camera_id, cv::CAP_MSMF, {cv::CAP_PROP_HW_ACCELERATION, cv::VIDEO_ACCELERATION_NONE});
 
-    unsigned char *buf = new unsigned char[size];
+    cap.set(cv::CAP_PROP_MODE, cv::VideoWriter::fourcc('Y', 'U', 'Y', 'V'));
+    cap.set(cv::CAP_PROP_FPS, 54.0);
+
     while (is_active_)
     {
-        video_input_.getPixels(camera_id, buf, false, true);
-        // cv::Mat(full_size, CV_8UC3, debug_frame->data, debug_frame->stride);
+        cv::Mat mat_ = {};
+        cv::Mat mat = {};
 
-        uint64_t time = os_monotonic_get_ns();
+        // Often returns [ WARN:0@11.016] global C:\dev\vcpkg\buildtrees\opencv4\src\4.6.0-9a95a1b699.clean\modules\videoio\src\cap_msmf.cpp (1752) CvCapture_MSMF::grabFrame videoio(MSMF): can't grab frame. Error: -2147483638
+        // Grrrr.
+        bool success = cap.read(mat_);
 
-        cv::Mat eh = cv::Mat(cv::Size(1920, 960), CV_8UC3, buf, 1920 * 3);
+        if (!success)
+        {
+            U_LOG_E("Failed!");
+            break;
+        }
 
-        cv::Mat mats_rgb[2];
+        //!@todo
+        double time_now = os_monotonic_get_ns();
+        double time_camera = cap.get(cv::CAP_PROP_POS_MSEC) * 1e6;
+
+        double time_ratio = time_now / time_camera;
+
+        double time_diff = time_camera - time_now;
+
+        // I've seen it vary from -4 to -30ms, really interesting!
+
+        double time_diff_ms = (double)time_diff / (double)U_TIME_1MS_IN_NS;
+
+        cv::cvtColor(mat_, mat, cv::COLOR_BGR2GRAY);
+
         cv::Mat mats_grayscale[2];
 
         // xat::FrameMat fms[2]; // = {};
         xrt_frame *frames[2] = {NULL, NULL};
 
-        mats_rgb[0] = eh(cv::Rect(0, 0, 960, 960));
-        mats_rgb[1] = eh(cv::Rect(960, 0, 960, 960));
+        mats_grayscale[0] = mat(cv::Rect(0, 0, 960, 960));
+        mats_grayscale[1] = mat(cv::Rect(960, 0, 960, 960));
 
         for (int i = 0; i < 2; i++)
         {
-            cv::cvtColor(mats_rgb[i], mats_grayscale[i], cv::COLOR_BGR2GRAY);
             xat::FrameMat::Params params;
             params.stereo_format = XRT_STEREO_FORMAT_NONE;
-            params.timestamp_ns = time;
+            params.timestamp_ns = time_camera;
             xat::FrameMat::wrapL8(mats_grayscale[i], &frames[i], params);
         }
         struct xrt_hand_joint_set hands[2];
         uint64_t out_timestamp;
         t_ht_sync_process(sync, frames[0], frames[1], &hands[0], &hands[1], &out_timestamp);
 
-        if (hands[0].is_active)
+         if (hands[0].is_active)
             left_hand_->UpdateHandTracking(&hands[0]);
         if (hands[1].is_active)
             right_hand_->UpdateHandTracking(&hands[1]);
@@ -180,10 +170,12 @@ void DeviceProvider::HandTrackingThread(t_hand_tracking_sync *sync, int camera_i
             xrt_frame_reference(&frames[i], NULL);
         }
 
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+
+        DriverLog("meow DIFF %f %f %f %f", time_diff_ms, time_now, time_camera, time_ratio);
     }
 
-    delete[] buf;
+    cap.release();
+    
 }
 
 const char *const *DeviceProvider::GetInterfaceVersions()

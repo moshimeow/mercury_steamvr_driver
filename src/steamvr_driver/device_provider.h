@@ -35,7 +35,9 @@ private:
     std::unique_ptr<MercuryHandDevice> left_hand_;
     std::unique_ptr<MercuryHandDevice> right_hand_;
 
-    videoInput video_input_;
+    // videoInput video_input_;
+    int camera_idx;
+
     
     void* sdl2_hack = NULL;
 };
