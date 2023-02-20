@@ -79,8 +79,14 @@ vr::EVRInitError DeviceProvider::Init(vr::IVRDriverContext *pDriverContext)
     info.views[0].camera_orientation = CAMERA_ORIENTATION_0;
     info.views[1].camera_orientation = CAMERA_ORIENTATION_0;
 
+    std::string htmodels_path = {};
+
+    GetHandTrackingModelsPath(htmodels_path);
+    DriverLog("Output path is %s", htmodels_path.c_str());
+
+
     struct t_hand_tracking_sync *sync =
-        t_hand_tracking_sync_mercury_create(calib, info, "C:\\dev\\mercury_steamvr_driver\\hand-tracking-models\\");
+        t_hand_tracking_sync_mercury_create(calib, info, htmodels_path.c_str());
 
     // oxr_sdl2_hack_start(this->sdl2_hack, NULL, NULL);
 

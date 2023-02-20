@@ -17,19 +17,11 @@
 #include "win_utils.h"
 #include "driver_log.h"
 
-bool GetDriverRootPath(std::string &out_path) {
-    std::string dll_path;
-    if (!GetDLLPath(dll_path)) return false;
-
-    const std::string unwanted = R"(\bin\win64\)";
-    out_path = dll_path.substr(0, dll_path.find_last_of("\\/")).erase(dll_path.find(unwanted), unwanted.length());
-
-    return true;
-}
-
 static bool GetDriverResourceInternalPath(std::string &out_path) {
     std::string root_path;
-    if (!GetDriverRootPath(root_path)) return false;
+    if (!GetDriverRootPath(root_path)) {
+        return false;
+    } 
 
     //yeet
     out_path = root_path + "\\resources\\internal";
@@ -72,6 +64,37 @@ static bool CreateHMDConfig(const std::string &internal_resources_path) {
 
     return true;
 }
+
+
+/*
+ * "Exported" functions
+*/
+
+
+bool GetDriverRootPath(std::string &out_path) {
+    std::string dll_path;
+    if (!GetDLLPath(dll_path)) return false;
+
+    const std::string unwanted = R"(\bin\win64\)";
+    out_path = dll_path.substr(0, dll_path.find_last_of("\\/")).erase(dll_path.find(unwanted), unwanted.length());
+
+    return true;
+}
+
+
+bool GetHandTrackingModelsPath(std::string &out_path) {
+
+    std::string res = {};
+    if (!GetDriverResourceInternalPath(res)) {
+        DriverLog("Couldn't find hand tracking models!");
+        return false;
+    }
+
+    out_path = res + "\\hand-tracking-models";
+
+    return false;
+}
+
 
 bool GetHMDConfig(std::string &out_path, bool pull) {
     std::string res_path;
