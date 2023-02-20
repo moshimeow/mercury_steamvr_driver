@@ -27,6 +27,9 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(MONADO_SRC_XRT ${CMAKE_CURRENT_SOURCE_DIR}/monado/src/xrt)
 
 ### Set configuration options for Monado
+set(XRT_HAVE_JPEG OFF) # No we don't
+set(ZLIB_FOUND OFF) # No we didn't
+
 set(XRT_FEATURE_COMPOSITOR_MAIN OFF) # we are not using this
 set(XRT_FEATURE_COMPOSITOR_NULL OFF) # we are not using this
 set(XRT_FEATURE_OPENXR OFF) # we need to replace this to pull together a different combination of modules
@@ -105,11 +108,11 @@ find_package(
 	REQUIRED
 	COMPONENTS
 		core
-		calib3d
-		highgui
-		imgproc
-		imgcodecs
-		features2d
+		#calib3d
+		#highgui
+		#imgproc
+		# imgcodecs
+		#features2d
 		video
 		CONFIG
 	)
