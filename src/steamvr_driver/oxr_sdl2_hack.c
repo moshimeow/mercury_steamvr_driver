@@ -323,7 +323,7 @@ oxr_sdl2_hack_start(void *hack, struct xrt_instance *xinst, struct xrt_system_de
 	// Share the system devices.
 	p->base.xsysd = xsysd;
 
-	if (SDL_Init(SDL_INIT_EVERYTHING) < 0) {
+	if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS) < 0) {
 		U_LOG_E("Failed to init SDL2!");
 		return;
 	}
