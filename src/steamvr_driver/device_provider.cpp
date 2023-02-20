@@ -103,7 +103,8 @@ struct t_camera_extra_info info;
         return vr::VRInitError_Driver_CalibrationInvalid;
     }
 
-    video_input_.setUseCallback(false);
+    // This seems to correctly limit it to 54Hz
+	video_input_.setUseCallback(true);
     video_input_.setIdealFramerate(wanted_idx, 54);
     video_input_.setupDevice(wanted_idx, 1920, 960);
 
