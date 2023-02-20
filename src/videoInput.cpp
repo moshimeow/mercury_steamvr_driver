@@ -174,7 +174,22 @@ public:
 
     	HRESULT hr = pSample->GetPointer(&ptrBuffer);
 
+
+
+
     	if(hr == S_OK){
+			LONGLONG mediastart = {};
+			LONGLONG mediaend = {};
+
+			pSample->GetMediaTime(&mediastart, &mediaend);
+
+			LONGLONG start = {};
+			LONGLONG end = {};
+
+			pSample->GetTime(&mediastart, &mediaend);
+
+			printf("Meow! %ld %ld   %ld %ld\n", mediastart, mediaend, start, end);
+
 	    	latestBufferLength = pSample->GetActualDataLength();
 	      	if(latestBufferLength == numBytes){
 				EnterCriticalSection(&critSection);
