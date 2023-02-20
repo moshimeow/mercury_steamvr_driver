@@ -51,15 +51,22 @@ target_include_directories(
 )
 
 
+add_executable(
+	ESCAPI_TEST 	escapi_test.cpp 
+)
+
+target_link_libraries(
+	ESCAPI_TEST
+	PRIVATE
+	${OpenCV_LIBRARIES}
+  xrt-interfaces aux_util aux_vive t_ht_mercury
+  meow_oxr_sdl2
+  hand_async
+  meow_escapi
+  #escapi_interface
+)
 
 
-
-
-#target_include_directories(
-#	THINGY
-#	PRIVATE
-#	${OpenCV_HEADERS}
-#)
 
 
 
