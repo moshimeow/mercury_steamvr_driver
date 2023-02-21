@@ -99,7 +99,7 @@ int main()
     info.views[1].boundary.circle.normalized_radius = 0.55;
 
     struct t_hand_tracking_sync *sync =
-        t_hand_tracking_sync_mercury_create(calib, info, "C:\\dev\\mercury_steamvr_driver\\hand-tracking-models\\");
+        t_hand_tracking_sync_mercury_create(calib, info, "C:\\dev\\mercury_steamvr_driver\\src\\steamvr_driver\\mercury\\resources\\internal\\hand-tracking-models\\");
 
     xrt_frame_context blah = {};
 
