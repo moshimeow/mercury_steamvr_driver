@@ -35,7 +35,10 @@ void SafeRelease(T **ppT)
 #include <string>
 
 #include "os/os_time.h"
-#include "driver_log.h"
+// #include "driver_log.h"
+#include "u_subprocess_logging.h"
+
+#define DriverLog U_SP_LOG_E
 
 void DeviceList::Clear()
 {

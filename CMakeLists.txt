@@ -116,7 +116,10 @@ find_package(
 		video
 		CONFIG
 	)
-
+find_package(
+	OPENVR
+	REQUIRED
+)
 
 
 add_subdirectory(src)

@@ -130,38 +130,12 @@ void MercuryHandDevice::UpdateHandTracking(const xrt_hand_joint_set *joint_set) 
     pose.poseTimeOffset = 0;
     pose.result = vr::TrackingResult_Running_OK;
 
-    vr::TrackedDevicePose_t hmd_pose;
-    vr::VRServerDriverHost()->GetRawTrackedDevicePoses(0, &hmd_pose, 1);
-    vr::HmdVector3d_t hmd_position = GetPosition(hmd_pose.mDeviceToAbsoluteTracking);
-    vr::HmdQuaternion_t hmd_rotation = GetRotation(hmd_pose.mDeviceToAbsoluteTracking);
-
-#if 0
-    // vr::TrackedDevicePose_t &hmd_pose = other_poses;
+    // vr::TrackedDevicePose_t hmd_pose;
+    // vr::VRServerDriverHost()->GetRawTrackedDevicePoses(0, &hmd_pose, 1);
+    // vr::HmdVector3d_t hmd_position = GetPosition(hmd_pose.mDeviceToAbsoluteTracking);
+    // vr::HmdQuaternion_t hmd_rotation = GetRotation(hmd_pose.mDeviceToAbsoluteTracking);
 
 
-    pose.vecWorldFromDriverTranslation[0] = hmd_position.v[0];
-    pose.vecWorldFromDriverTranslation[1] = hmd_position.v[1];
-    pose.vecWorldFromDriverTranslation[2] = hmd_position.v[2];
-    pose.qWorldFromDriverRotation = hmd_rotation;
-
-    pose.vecPosition[0] = joint_set->values.hand_joint_set_default[0].relation.pose.position.x;
-    pose.vecPosition[1] = joint_set->values.hand_joint_set_default[0].relation.pose.position.y;
-    pose.vecPosition[2] = joint_set->values.hand_joint_set_default[0].relation.pose.position.z;
-
-    //Copy other values from the hmd
-    pose.vecAngularVelocity[0] = hmd_pose.vAngularVelocity.v[0];
-    pose.vecAngularVelocity[1] = hmd_pose.vAngularVelocity.v[1];
-    pose.vecAngularVelocity[2] = hmd_pose.vAngularVelocity.v[2];
-
-    pose.vecVelocity[0] = hmd_pose.vVelocity.v[0];
-    pose.vecVelocity[1] = hmd_pose.vVelocity.v[1];
-    pose.vecVelocity[2] = hmd_pose.vVelocity.v[2];
-
-    pose.qRotation.w = joint_set->values.hand_joint_set_default[0].relation.pose.orientation.w;
-    pose.qRotation.x = joint_set->values.hand_joint_set_default[0].relation.pose.orientation.x;
-    pose.qRotation.y = joint_set->values.hand_joint_set_default[0].relation.pose.orientation.y;
-    pose.qRotation.z = joint_set->values.hand_joint_set_default[0].relation.pose.orientation.z;
-#else
     for (int i = 0; i < 3; i++) {
         pose.vecWorldFromDriverTranslation[i] = 0.0;
         pose.vecAngularVelocity[i] = 0.0f;
@@ -174,12 +148,12 @@ void MercuryHandDevice::UpdateHandTracking(const xrt_hand_joint_set *joint_set) 
 
     pose.qWorldFromDriverRotation = {1,0,0,0};
 
-    struct xrt_pose head_pose;
-    convert_quaternion(hmd_rotation, head_pose.orientation);
-    // convert_vec3(hmd_position, head_pose.position);
-    head_pose.position.x = hmd_position.v[0];
-    head_pose.position.y = hmd_position.v[1];
-    head_pose.position.z = hmd_position.v[2];
+    // struct xrt_pose head_pose;
+    // convert_quaternion(hmd_rotation, head_pose.orientation);
+    // // convert_vec3(hmd_position, head_pose.position);
+    // head_pose.position.x = hmd_position.v[0];
+    // head_pose.position.y = hmd_position.v[1];
+    // head_pose.position.z = hmd_position.v[2];
 
     //! @todo Fragile! Depends on hand_joint_set_default->hand_relation being identity.
     struct xrt_pose wrist_pose_in_left_camera = joint_set->values.hand_joint_set_default[XRT_HAND_JOINT_WRIST].relation.pose;
@@ -188,14 +162,12 @@ void MercuryHandDevice::UpdateHandTracking(const xrt_hand_joint_set *joint_set) 
     struct xrt_relation_chain xrc = {};
     m_relation_chain_push_pose_if_not_identity(&xrc, &wrist_pose_in_left_camera);
     m_relation_chain_push_pose_if_not_identity(&xrc, &this->left_camera_in_head);
-    m_relation_chain_push_pose_if_not_identity(&xrc, &head_pose);
     m_relation_chain_resolve(&xrc, &wrist_pose_in_global);
 
     pose.vecPosition[0] = wrist_pose_in_global.pose.position.x;
     pose.vecPosition[1] = wrist_pose_in_global.pose.position.y;
     pose.vecPosition[2] = wrist_pose_in_global.pose.position.z;
     convert_quaternion(wrist_pose_in_global.pose.orientation, pose.qRotation);
-#endif
 
     // Update the fake controller pose
     vr::VRServerDriverHost()->TrackedDevicePoseUpdated(device_id_, pose, sizeof(vr::DriverPose_t));

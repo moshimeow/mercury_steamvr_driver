@@ -101,7 +101,7 @@ vr::EVRInitError DeviceProvider::Init(vr::IVRDriverContext *pDriverContext)
         return vr::VRInitError_Driver_Failed;
     }
 
-#if 1
+#if 0
 
     DriverLog("Server: Listening!\n");
 
@@ -152,15 +152,8 @@ vr::EVRInitError DeviceProvider::Init(vr::IVRDriverContext *pDriverContext)
     return vr::VRInitError_None;
 }
 
-// void relation_set_valid_and_rel(const xrt_space_relation &relation, xrt_space_relation &out_relation)
-// {
-
-// }
-
 void hjs_from_tracking_message(const struct tracking_message_hand &msg, xrt_hand_joint_set &set)
 {
-
-    DriverLog("hjs");
     if (!msg.tracked)
     {
         set.is_active = false;
@@ -177,7 +170,6 @@ void hjs_from_tracking_message(const struct tracking_message_hand &msg, xrt_hand
 
     for (int i = 0; i < XRT_HAND_JOINT_COUNT; i++)
     {
-        DriverLog("hjs %d", i);
         struct xrt_relation_chain xrc = {};
         xrt_space_relation tmp = {};
         m_relation_chain_push_pose(&xrc, &msg.fingers_relative[i]);
@@ -191,14 +183,14 @@ void hjs_from_tracking_message(const struct tracking_message_hand &msg, xrt_hand
 
 void DeviceProvider::HandTrackingThread()
 {
-#if 0
+#if 1
     DriverLog( "Server: Listening!\n");
 
     // Listen for the subprocess to connect
     int iResult = listen(listenSocket, SOMAXCONN);
     if (iResult == SOCKET_ERROR)
     {
-        DriverLog( "Error listening for connection: " << WSAGetLastError() << std::endl;
+        DriverLog( "Error listening for connection: %d", WSAGetLastError());
         closesocket(listenSocket);
         WSACleanup();
         return;

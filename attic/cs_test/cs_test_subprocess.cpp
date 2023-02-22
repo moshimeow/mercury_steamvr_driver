@@ -24,17 +24,21 @@
 #include "CameraIdxGuesser.hpp"
 #include "cs_test_common.hpp"
 
+#include "openvr.h"
+
 namespace xat = xrt::auxiliary::tracking;
 
 struct subprocess_state
 {
-    const char* port;
-    const char* vive_config_location;
+    const char *port;
+    const char *vive_config_location;
     bool running = true;
 
     SOCKET connectSocket;
 
     cv::VideoCapture cap;
+
+    vr::IVRSystem *vr_system;
 
     struct t_hand_tracking_sync *sync = nullptr;
 };
@@ -55,18 +59,16 @@ std::string read_file(std::string_view path)
     return out;
 }
 
+bool setup_camera_and_ht(subprocess_state &state)
+{
 
-bool setup_camera_and_ht(subprocess_state &state){
-
-    
     int match_idx = GetIndexIndex();
     if (match_idx == -1)
     {
         return false;
     }
 
-    std::string config_string = read_file(state.vive_config_location);
-
+    std::string config_string = read_file("C:\\dev\\mercury_steamvr_driver\\attic\\T20_config.json");
 
     struct vive_config c = {};
 
@@ -115,7 +117,6 @@ bool setup_camera_and_ht(subprocess_state &state){
 
     xrt_frame_context blah = {};
 
-
     oxr_sdl2_hack_start(sdl2_hack, NULL, NULL);
 
     // This is definitely fragile.
@@ -127,12 +128,33 @@ bool setup_camera_and_ht(subprocess_state &state){
     state.cap.set(cv::CAP_PROP_MODE, cv::VideoWriter::fourcc('Y', 'U', 'Y', 'V'));
     state.cap.set(cv::CAP_PROP_FPS, 54.0);
 
+    return true;
 }
 
+vr::HmdVector3d_t GetPosition(const vr::HmdMatrix34_t &matrix) {
+    return {matrix.m[0][3], matrix.m[1][3], matrix.m[2][3]};
+}
 
-void hjs_to_tracking_message(xrt_hand_joint_set &set, struct tracking_message_hand &msg) {
+vr::HmdQuaternion_t GetRotation(const vr::HmdMatrix34_t &matrix) {
+    vr::HmdQuaternion_t q{};
 
-    if (!set.is_active) {
+    q.w = sqrt(fmax(0, 1 + matrix.m[0][0] + matrix.m[1][1] + matrix.m[2][2])) / 2;
+    q.x = sqrt(fmax(0, 1 + matrix.m[0][0] - matrix.m[1][1] - matrix.m[2][2])) / 2;
+    q.y = sqrt(fmax(0, 1 - matrix.m[0][0] + matrix.m[1][1] - matrix.m[2][2])) / 2;
+    q.z = sqrt(fmax(0, 1 - matrix.m[0][0] - matrix.m[1][1] + matrix.m[2][2])) / 2;
+
+    q.x = copysign(q.x, matrix.m[2][1] - matrix.m[1][2]);
+    q.y = copysign(q.y, matrix.m[0][2] - matrix.m[2][0]);
+    q.z = copysign(q.z, matrix.m[1][0] - matrix.m[0][1]);
+
+    return q;
+}
+
+void hjs_to_tracking_message(xrt_hand_joint_set &set, struct tracking_message_hand &msg)
+{
+
+    if (!set.is_active)
+    {
         msg.tracked = false;
     }
     msg.tracked = true;
@@ -141,21 +163,34 @@ void hjs_to_tracking_message(xrt_hand_joint_set &set, struct tracking_message_ha
 
     msg.wrist = wrist.pose;
 
-    for (int i = 0; i < XRT_HAND_JOINT_COUNT; i++) {
-		struct xrt_relation_chain xrc = {};
+    for (int i = 0; i < XRT_HAND_JOINT_COUNT; i++)
+    {
+        struct xrt_relation_chain xrc = {};
         xrt_space_relation tmp = {};
-		m_relation_chain_push_relation(&xrc, &set.values.hand_joint_set_default[i].relation);
-		m_relation_chain_push_inverted_relation(&xrc, &wrist);
-		m_relation_chain_resolve(&xrc, &tmp);
+        m_relation_chain_push_relation(&xrc, &set.values.hand_joint_set_default[i].relation);
+        m_relation_chain_push_inverted_relation(&xrc, &wrist);
+        m_relation_chain_resolve(&xrc, &tmp);
 
         msg.fingers_relative[i] = tmp.pose;
-	}
+    }
 }
 
+void print_matrix_to_stream(vr::HmdMatrix34_t &matrix)
+{
+    for (size_t i = 0; i < 3; ++i)
+    {
+        for (size_t j = 0; j < 4; ++j)
+        {
+            // print_to_stream(&matrix.m[i][j], float_bytes, float_size);
+            std::cout << matrix.m[i][j] << " ";
+        }
+        std::cout << "\n";
+    }
+}
 
 int main(int argc, char **argv)
 {
-    if (argc < 3)
+    if (argc < 2)
     {
         U_LOG_E("Need a port and vive config location");
         return 1;
@@ -163,8 +198,11 @@ int main(int argc, char **argv)
     subprocess_state state = {};
 
     state.port = argv[1];
-    state.vive_config_location = argv[2];
+    // state.vive_config_location = argv[2];
 
+    vr::EVRInitError error;
+
+    state.vr_system = vr::VR_Init(&error, vr::EVRApplicationType::VRApplication_Background);
 
     // Initialize WinSock!
     // This is an "out" struct, which we won't bother with looking at.
@@ -177,7 +215,6 @@ int main(int argc, char **argv)
         std::cerr << "WSAStartup failed: " << iResult << std::endl;
         return 1;
     }
-
 
     // Create a socket to connect to the parent process
     state.connectSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
@@ -204,7 +241,6 @@ int main(int argc, char **argv)
     }
 
     setup_camera_and_ht(state);
-
 
     u_var_add_root(&state, "SteamVR driver!", 0);
 
@@ -235,7 +271,17 @@ int main(int argc, char **argv)
 
         // I've seen it vary from -4 to -30ms, really interesting!
 
-        double time_diff_ms = (double)time_diff / (double)U_TIME_1MS_IN_NS;
+        double time_diff_ms = (double)time_diff / (double)U_TIME_1S_IN_NS;
+
+        vr::TrackedDevicePose_t hmd_pose;
+
+        state.vr_system->GetDeviceToAbsoluteTrackingPose(vr::ETrackingUniverseOrigin::TrackingUniverseStanding, time_diff_ms, &hmd_pose, 1);
+
+        {
+            std::cout << "hmd: ";
+
+            print_matrix_to_stream(hmd_pose.mDeviceToAbsoluteTracking);
+        }
 
         cv::cvtColor(mat_, mat, cv::COLOR_BGR2GRAY);
 
@@ -269,14 +315,12 @@ int main(int argc, char **argv)
         // Send data to the parent process
         // char *sendBuffer = ;
         std::cout << "Going to send!" << std::endl;
-        iResult = send(state.connectSocket, (const char*)&message, TMSIZE, 0);
+        iResult = send(state.connectSocket, (const char *)&message, TMSIZE, 0);
         if (iResult == SOCKET_ERROR)
         {
             std::cerr << "Error sending data: " << WSAGetLastError() << std::endl;
             break;
         }
-
-
 
         // U_LOG_E("meow DIFF %f %f %f %f", time_diff_ms, time_now, time_camera, time_ratio);
     }
@@ -284,8 +328,6 @@ int main(int argc, char **argv)
     state.cap.release();
 
     // return 0;
-
-
 
     // // Receive data from the parent process
     // char recvBuffer[1024];

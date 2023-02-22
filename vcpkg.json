@@ -13,6 +13,7 @@
         "glslang",
         "vulkan",
         "sdl2",
-        "opencv"
+        "opencv",
+        "openvr"
     ]
 }

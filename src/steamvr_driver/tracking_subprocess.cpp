@@ -23,6 +23,10 @@
 #include "../../src/steamvr_driver/oxr_sdl2_hack.h"
 #include "CameraIdxGuesser.hpp"
 #include "tracking_subprocess_protocol.hpp"
+#include "openvr.h"
+#include "u_subprocess_logging.h"
+
+#define meow_printf U_SP_LOG_E
 
 namespace xat = xrt::auxiliary::tracking;
 
@@ -35,6 +39,10 @@ struct subprocess_state
     SOCKET connectSocket;
 
     cv::VideoCapture cap;
+
+    vr::IVRSystem *vr_system;
+
+    xrt_pose left_camera_in_head;
 
     struct t_hand_tracking_sync *sync = nullptr;
 };
@@ -57,7 +65,7 @@ std::string read_file(std::string_view path)
 
 bool setup_camera_and_ht(subprocess_state &state)
 {
-    MessageBoxA(nullptr, "Index index", "Meow meow meow", MB_OK);
+    // MessageBoxA(nullptr, "Index index", "Meow meow meow", MB_OK);
 
     int match_idx = -1;
 
@@ -74,7 +82,7 @@ bool setup_camera_and_ht(subprocess_state &state)
         return false;
     }
 
-    MessageBoxA(nullptr, "Read file", "Meow meow meow", MB_OK);
+    meow_printf("Read file");
 
     std::string config_string = read_file(state.vive_config_location);
 
@@ -93,6 +101,8 @@ bool setup_camera_and_ht(subprocess_state &state)
     xrt_pose head_in_left; // unused
 
     vive_get_stereo_camera_calibration(&c, &calib, &head_in_left);
+
+    math_pose_invert(&head_in_left, &state.left_camera_in_head);
 
     // This definitely needs to be first
     void *sdl2_hack;
@@ -139,7 +149,24 @@ bool setup_camera_and_ht(subprocess_state &state)
     return true;
 }
 
-void hjs_to_tracking_message(xrt_hand_joint_set &set, struct tracking_message_hand &msg)
+xrt_pose GetPose(const vr::HmdMatrix34_t &matrix)
+{
+    xrt_quat q{};
+    xrt_vec3 v = {matrix.m[0][3], matrix.m[1][3], matrix.m[2][3]};
+
+    q.w = sqrt(fmax(0, 1 + matrix.m[0][0] + matrix.m[1][1] + matrix.m[2][2])) / 2;
+    q.x = sqrt(fmax(0, 1 + matrix.m[0][0] - matrix.m[1][1] - matrix.m[2][2])) / 2;
+    q.y = sqrt(fmax(0, 1 - matrix.m[0][0] + matrix.m[1][1] - matrix.m[2][2])) / 2;
+    q.z = sqrt(fmax(0, 1 - matrix.m[0][0] - matrix.m[1][1] + matrix.m[2][2])) / 2;
+
+    q.x = copysign(q.x, matrix.m[2][1] - matrix.m[1][2]);
+    q.y = copysign(q.y, matrix.m[0][2] - matrix.m[2][0]);
+    q.z = copysign(q.z, matrix.m[1][0] - matrix.m[0][1]);
+
+    return {q, v};
+}
+
+void hjs_to_tracking_message(subprocess_state &state, xrt_hand_joint_set &set, xrt_pose attached_head, struct tracking_message_hand &msg)
 {
 
     if (!set.is_active)
@@ -150,7 +177,17 @@ void hjs_to_tracking_message(xrt_hand_joint_set &set, struct tracking_message_ha
 
     xrt_space_relation wrist = set.values.hand_joint_set_default[XRT_HAND_JOINT_WRIST].relation;
 
-    msg.wrist = wrist.pose;
+    struct xrt_relation_chain xrc_wrist = {};
+    xrt_space_relation tmp = {};
+
+    m_relation_chain_push_relation(&xrc_wrist, &wrist);
+    // TODO ADD HEAD OFFSET HERE
+    m_relation_chain_push_pose(&xrc_wrist, &state.left_camera_in_head);
+    m_relation_chain_push_pose(&xrc_wrist, &attached_head);
+
+    m_relation_chain_resolve(&xrc_wrist, &tmp);
+
+    msg.wrist = tmp.pose;
 
     for (int i = 0; i < XRT_HAND_JOINT_COUNT; i++)
     {
@@ -164,23 +201,60 @@ void hjs_to_tracking_message(xrt_hand_joint_set &set, struct tracking_message_ha
     }
 }
 
+void listen_for_server_input()
+{
+    // What data do we need to listen to anyway?
+    // // Receive data from the parent process
+    // char recvBuffer[1024];
+    // iResult = recv(state.connectSocket, recvBuffer, sizeof(recvBuffer), 0);
+    // if (iResult == SOCKET_ERROR)
+    // {
+    //     meow_printf( "Error receiving data: " << WSAGetLastError() );
+    //     closesocket(state.connectSocket);
+    //     WSACleanup();
+    //     return 1;
+    // }
+    // recvBuffer[iResult] = '\0';
+    // meow_printf( "Received data from parent process: " << recvBuffer );
+}
+
+bool check_vrserver_alive(subprocess_state &state)
+{
+    vr::VREvent_t event{};
+    while (state.vr_system->PollNextEvent(&event, sizeof(event)))
+    {
+        switch (event.eventType)
+        {
+        case vr::VREvent_Quit:
+        {
+            meow_printf("VRServer quitting!");
+            return false;
+        }
+        break;
+        default:
+            return true;
+        }
+    }
+    return true;
+}
+
 int meow_exit()
 {
-    std::cout << "Press any key to exit.";
+    meow_printf("Press any key to exit.");
     std::cin.ignore();
     std::cin.get();
 
-    return 1;
+    abort();
 }
-
-#define meow_printf printf
 
 int main(int argc, char **argv)
 {
-    MessageBoxA(nullptr, "Meow", "Meow meow meow", MB_OK);
+    meow_printf("Starting!");
+
+
     if (argc < 3)
     {
-        U_LOG_E("Need a port and vive config location");
+        U_SP_LOG_E("Need a port and vive config location");
         meow_exit();
     }
     subprocess_state state = {};
@@ -190,34 +264,54 @@ int main(int argc, char **argv)
     state.port = argv[1];
     state.vive_config_location = argv[2];
 
+    vr::EVRInitError error;
+
+    for (int i = 0; i < 100; i++)
+    {
+
+        meow_printf("vriNIT!");
+
+        state.vr_system = vr::VR_Init(&error, vr::EVRApplicationType::VRApplication_Background);
+
+        if (error == vr::VRInitError_None)
+        {
+            break;
+        }
+
+        meow_printf("rESULT WAS %d\n", error);
+
+        os_nanosleep(U_TIME_1MS_IN_NS * 100);
+    }
+
     meow_printf("Port is %s, config location is %s", state.port, state.vive_config_location);
 
     // Initialize WinSock!
     // This is an "out" struct, which we won't bother with looking at.
     WSADATA wsaData;
 
-    MessageBoxA(nullptr, "WSAStartup", "Meow meow meow", MB_OK);
-
+    // MessageBoxA(nullptr, "WSAStartup", "Meow meow meow", MB_OK);
+    meow_printf("WSAStartup");
     // It's also supposedly fine to have multiple overlapping calls to WSAStartup and WSACleanup. Wow Windows commits some *crimes* but alrighty
     int iResult = WSAStartup(MAKEWORD(2, 2), &wsaData);
     if (iResult != 0)
     {
-        std::cerr << "WSAStartup failed: " << iResult << std::endl;
+        meow_printf("WSAStartup failed: ", iResult);
         meow_exit();
     }
 
-    MessageBoxA(nullptr, "Socket", "Meow meow meow", MB_OK);
+    // MessageBoxA(nullptr, "Socket", "Meow meow meow", MB_OK);
+    meow_printf("Socket");
 
     // Create a socket to connect to the parent process
     state.connectSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     if (state.connectSocket == INVALID_SOCKET)
     {
-        std::cerr << "Error creating socket: " << WSAGetLastError() << std::endl;
+        meow_printf("Error creating socket: ", WSAGetLastError());
         WSACleanup();
         meow_exit();
     }
 
-    MessageBoxA(nullptr, "Connect", "Meow meow meow", MB_OK);
+    meow_printf("Connect");
 
     // Connect to the parent process
     sockaddr_in serverAddr;
@@ -228,23 +322,32 @@ int main(int argc, char **argv)
     iResult = connect(state.connectSocket, reinterpret_cast<SOCKADDR *>(&serverAddr), sizeof(serverAddr));
     if (iResult == SOCKET_ERROR)
     {
-        std::cerr << "Error connecting to server: " << WSAGetLastError() << std::endl;
+        meow_printf("Error connecting to server: ", WSAGetLastError());
         closesocket(state.connectSocket);
         WSACleanup();
         meow_exit();
     }
-    MessageBoxA(nullptr, "Camera", "Meow meow meow", MB_OK);
+
+    meow_printf("Camera");
 
     setup_camera_and_ht(state);
 
-    MessageBoxA(nullptr, "Add vars", "Meow meow meow", MB_OK);
+    meow_printf("Add vars");
 
     u_var_add_root(&state, "SteamVR driver!", 0);
 
     u_var_add_bool(&state, &state.running, "Running");
+    meow_printf("Making watch thread");
+
+    // std::thread(&watch_for_server_quit, &state);
+
+    meow_printf("Done making watch thread");
 
     while (state.running)
     {
+        if (!check_vrserver_alive(state)) {
+            break;
+        }
         cv::Mat mat_ = {};
         cv::Mat mat = {};
 
@@ -254,7 +357,7 @@ int main(int argc, char **argv)
 
         if (!success)
         {
-            U_LOG_E("Failed!");
+            U_SP_LOG_E("Failed!");
             break;
         }
 
@@ -268,7 +371,13 @@ int main(int argc, char **argv)
 
         // I've seen it vary from -4 to -30ms, really interesting!
 
-        double time_diff_ms = (double)time_diff / (double)U_TIME_1MS_IN_NS;
+        double time_diff_s = (double)time_diff / (double)U_TIME_1S_IN_NS;
+
+        vr::TrackedDevicePose_t hmd_pose;
+
+        state.vr_system->GetDeviceToAbsoluteTrackingPose(vr::ETrackingUniverseOrigin::TrackingUniverseRawAndUncalibrated, time_diff_s, &hmd_pose, 1);
+
+        xrt_pose attached_hmd_pose = GetPose(hmd_pose.mDeviceToAbsoluteTracking);
 
         cv::cvtColor(mat_, mat, cv::COLOR_BGR2GRAY);
 
@@ -296,40 +405,33 @@ int main(int argc, char **argv)
 
         message.size = TMSIZE;
         message.timestamp = time_camera;
-        hjs_to_tracking_message(hands[0], message.hands[0]);
-        hjs_to_tracking_message(hands[1], message.hands[1]);
+        hjs_to_tracking_message(state, hands[0], attached_hmd_pose, message.hands[0]);
+        hjs_to_tracking_message(state, hands[1], attached_hmd_pose, message.hands[1]);
 
         // Send data to the parent process
         // char *sendBuffer = ;
-        std::cout << "Going to send!" << std::endl;
+        meow_printf("Going to send!");
         iResult = send(state.connectSocket, (const char *)&message, TMSIZE, 0);
         if (iResult == SOCKET_ERROR)
         {
-            std::cerr << "Error sending data: " << WSAGetLastError() << std::endl;
+            meow_printf("Error sending data: ", WSAGetLastError());
             break;
         }
     }
 
+    meow_printf("Shutting down semi-cleanly!");
+
     state.cap.release();
 
-    // return 0;
+    vr::VR_Shutdown();
 
-    // // Receive data from the parent process
-    // char recvBuffer[1024];
-    // iResult = recv(state.connectSocket, recvBuffer, sizeof(recvBuffer), 0);
-    // if (iResult == SOCKET_ERROR)
-    // {
-    //     std::cerr << "Error receiving data: " << WSAGetLastError() << std::endl;
-    //     closesocket(state.connectSocket);
-    //     WSACleanup();
-    //     return 1;
-    // }
-    // recvBuffer[iResult] = '\0';
-    // std::cout << "Received data from parent process: " << recvBuffer << std::endl;
+    // return 0;
 
     // Close the socket and cleanup Winsock
     closesocket(state.connectSocket);
     WSACleanup();
+
+    meow_exit();
 
     return 0;
 }

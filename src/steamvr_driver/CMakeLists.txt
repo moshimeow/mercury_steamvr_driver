@@ -19,6 +19,7 @@ add_executable(tracking_subprocess tracking_subprocess.cpp)
 
 target_link_libraries(tracking_subprocess PRIVATE 
 ${OpenCV_LIBRARIES}
+OpenVR::OpenVR
 xrt-interfaces
 aux_util
 aux_vive

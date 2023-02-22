@@ -3,7 +3,9 @@
 
 
 
-add_library(meow_util STATIC CameraIdxGuesser.cpp CameraIdxGuesser.hpp CameraIdxGuesser_win_capture.h driver_log.cpp driver_log.h)
+add_library(meow_util STATIC CameraIdxGuesser.cpp CameraIdxGuesser.hpp CameraIdxGuesser_win_capture.h 
+                driver_log.cpp driver_log.h
+                u_subprocess_logging.c u_subprocess_logging.h)
 
 
 target_include_directories(meow_util INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
