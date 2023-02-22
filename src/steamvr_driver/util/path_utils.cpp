@@ -40,11 +40,12 @@ static bool FindHMDConfig(const std::string &search_path, std::string &out_confi
 
         if (std::regex_match(file_name, std::regex("LHR-[A-Z0-9]*\\.json"))) {
             DriverLog("Using HMD config from: %s", file_name.c_str());
+            out_config = file_path.string();
 
-            std::ifstream ifs(file_path);
-            std::string content((std::istreambuf_iterator<char>(ifs)), (std::istreambuf_iterator<char>()));
+            // std::ifstream ifs(file_path);
+            // std::string content((std::istreambuf_iterator<char>(ifs)), (std::istreambuf_iterator<char>()));
 
-            out_config = content;
+            // out_config = content;
 
             return true;
         }
@@ -82,6 +83,20 @@ bool GetDriverRootPath(std::string &out_path) {
 }
 
 
+bool GetSubprocessPath(std::string &out_path) {
+    std::string res = {};
+    if (!GetDriverRootPath(res)) {
+        DriverLog("Couldn't find tracking subprocess executable!");
+        return false;
+    }
+    DriverLog("Meow %s", res.c_str());
+
+    out_path = res + R"(\bin\win64\tracking_subprocess.exe)";
+    DriverLog("Meow %s", out_path.c_str());
+
+
+}
+
 bool GetHandTrackingModelsPath(std::string &out_path) {
 
     std::string res = {};
@@ -92,11 +107,11 @@ bool GetHandTrackingModelsPath(std::string &out_path) {
 
     out_path = res + "\\hand-tracking-models";
 
-    return false;
+    return true;
 }
 
 
-bool GetHMDConfig(std::string &out_path, bool pull) {
+bool GetHMDConfigPath(std::string &out_path, bool pull) {
     std::string res_path;
     if (!GetDriverResourceInternalPath(res_path)) return false;
 
@@ -112,7 +127,7 @@ bool GetHMDConfig(std::string &out_path, bool pull) {
             return false;
         }
 
-        return GetHMDConfig(out_path, false);
+        return GetHMDConfigPath(out_path, false);
     }
 
     return true;

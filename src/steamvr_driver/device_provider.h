@@ -3,6 +3,7 @@
 #include <memory>
 #include <atomic>
 #include <thread>
+#include <winsock2.h>
 
 #include "openvr_driver.h"
 
@@ -26,7 +27,10 @@ public:
 
 private:
 
-    void HandTrackingThread(t_hand_tracking_sync *sync, int camera_id);
+    void HandTrackingThread();
+
+    SOCKET clientSocket;
+    SOCKET listenSocket;
 
     std::atomic<bool> is_active_;
     std::thread hand_tracking_thread_;

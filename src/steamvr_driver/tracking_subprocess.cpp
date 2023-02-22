@@ -22,14 +22,14 @@
 #include "os/os_time.h"
 #include "../../src/steamvr_driver/oxr_sdl2_hack.h"
 #include "CameraIdxGuesser.hpp"
-#include "cs_test_common.hpp"
+#include "tracking_subprocess_protocol.hpp"
 
 namespace xat = xrt::auxiliary::tracking;
 
 struct subprocess_state
 {
-    const char* port;
-    const char* vive_config_location;
+    const char *port;
+    const char *vive_config_location;
     bool running = true;
 
     SOCKET connectSocket;
@@ -55,18 +55,28 @@ std::string read_file(std::string_view path)
     return out;
 }
 
+bool setup_camera_and_ht(subprocess_state &state)
+{
+    MessageBoxA(nullptr, "Index index", "Meow meow meow", MB_OK);
 
-bool setup_camera_and_ht(subprocess_state &state){
+    int match_idx = -1;
 
-    
-    int match_idx = GetIndexIndex();
+    for (int i = 0; i < 10; i++)
+    {
+        match_idx = GetIndexIndex();
+        if (match_idx != -1)
+        {
+            break;
+        }
+    }
     if (match_idx == -1)
     {
         return false;
     }
 
-    std::string config_string = read_file(state.vive_config_location);
+    MessageBoxA(nullptr, "Read file", "Meow meow meow", MB_OK);
 
+    std::string config_string = read_file(state.vive_config_location);
 
     struct vive_config c = {};
 
@@ -115,7 +125,6 @@ bool setup_camera_and_ht(subprocess_state &state){
 
     xrt_frame_context blah = {};
 
-
     oxr_sdl2_hack_start(sdl2_hack, NULL, NULL);
 
     // This is definitely fragile.
@@ -127,12 +136,14 @@ bool setup_camera_and_ht(subprocess_state &state){
     state.cap.set(cv::CAP_PROP_MODE, cv::VideoWriter::fourcc('Y', 'U', 'Y', 'V'));
     state.cap.set(cv::CAP_PROP_FPS, 54.0);
 
+    return true;
 }
 
+void hjs_to_tracking_message(xrt_hand_joint_set &set, struct tracking_message_hand &msg)
+{
 
-void hjs_to_tracking_message(xrt_hand_joint_set &set, struct tracking_message_hand &msg) {
-
-    if (!set.is_active) {
+    if (!set.is_active)
+    {
         msg.tracked = false;
     }
     msg.tracked = true;
@@ -141,43 +152,61 @@ void hjs_to_tracking_message(xrt_hand_joint_set &set, struct tracking_message_ha
 
     msg.wrist = wrist.pose;
 
-    for (int i = 0; i < XRT_HAND_JOINT_COUNT; i++) {
-		struct xrt_relation_chain xrc = {};
+    for (int i = 0; i < XRT_HAND_JOINT_COUNT; i++)
+    {
+        struct xrt_relation_chain xrc = {};
         xrt_space_relation tmp = {};
-		m_relation_chain_push_relation(&xrc, &set.values.hand_joint_set_default[i].relation);
-		m_relation_chain_push_inverted_relation(&xrc, &wrist);
-		m_relation_chain_resolve(&xrc, &tmp);
+        m_relation_chain_push_relation(&xrc, &set.values.hand_joint_set_default[i].relation);
+        m_relation_chain_push_inverted_relation(&xrc, &wrist);
+        m_relation_chain_resolve(&xrc, &tmp);
 
         msg.fingers_relative[i] = tmp.pose;
-	}
+    }
 }
 
+int meow_exit()
+{
+    std::cout << "Press any key to exit.";
+    std::cin.ignore();
+    std::cin.get();
+
+    return 1;
+}
+
+#define meow_printf printf
 
 int main(int argc, char **argv)
 {
+    MessageBoxA(nullptr, "Meow", "Meow meow meow", MB_OK);
     if (argc < 3)
     {
         U_LOG_E("Need a port and vive config location");
-        return 1;
+        meow_exit();
     }
     subprocess_state state = {};
+
+    // MessageBoxA(nullptr, "Meow", "Meow meow meow", MB_OK);
 
     state.port = argv[1];
     state.vive_config_location = argv[2];
 
+    meow_printf("Port is %s, config location is %s", state.port, state.vive_config_location);
 
     // Initialize WinSock!
     // This is an "out" struct, which we won't bother with looking at.
     WSADATA wsaData;
+
+    MessageBoxA(nullptr, "WSAStartup", "Meow meow meow", MB_OK);
 
     // It's also supposedly fine to have multiple overlapping calls to WSAStartup and WSACleanup. Wow Windows commits some *crimes* but alrighty
     int iResult = WSAStartup(MAKEWORD(2, 2), &wsaData);
     if (iResult != 0)
     {
         std::cerr << "WSAStartup failed: " << iResult << std::endl;
-        return 1;
+        meow_exit();
     }
 
+    MessageBoxA(nullptr, "Socket", "Meow meow meow", MB_OK);
 
     // Create a socket to connect to the parent process
     state.connectSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
@@ -185,8 +214,10 @@ int main(int argc, char **argv)
     {
         std::cerr << "Error creating socket: " << WSAGetLastError() << std::endl;
         WSACleanup();
-        return 1;
+        meow_exit();
     }
+
+    MessageBoxA(nullptr, "Connect", "Meow meow meow", MB_OK);
 
     // Connect to the parent process
     sockaddr_in serverAddr;
@@ -200,11 +231,13 @@ int main(int argc, char **argv)
         std::cerr << "Error connecting to server: " << WSAGetLastError() << std::endl;
         closesocket(state.connectSocket);
         WSACleanup();
-        return 1;
+        meow_exit();
     }
+    MessageBoxA(nullptr, "Camera", "Meow meow meow", MB_OK);
 
     setup_camera_and_ht(state);
 
+    MessageBoxA(nullptr, "Add vars", "Meow meow meow", MB_OK);
 
     u_var_add_root(&state, "SteamVR driver!", 0);
 
@@ -269,23 +302,17 @@ int main(int argc, char **argv)
         // Send data to the parent process
         // char *sendBuffer = ;
         std::cout << "Going to send!" << std::endl;
-        iResult = send(state.connectSocket, (const char*)&message, TMSIZE, 0);
+        iResult = send(state.connectSocket, (const char *)&message, TMSIZE, 0);
         if (iResult == SOCKET_ERROR)
         {
             std::cerr << "Error sending data: " << WSAGetLastError() << std::endl;
             break;
         }
-
-
-
-        // U_LOG_E("meow DIFF %f %f %f %f", time_diff_ms, time_now, time_camera, time_ratio);
     }
 
     state.cap.release();
 
     // return 0;
-
-
 
     // // Receive data from the parent process
     // char recvBuffer[1024];

@@ -15,6 +15,20 @@ if(XRT_HAVE_SDL2)
 endif()
 
 
+add_executable(tracking_subprocess tracking_subprocess.cpp)
+
+target_link_libraries(tracking_subprocess PRIVATE 
+${OpenCV_LIBRARIES}
+xrt-interfaces
+aux_util
+aux_vive
+t_ht_mercury
+meow_oxr_sdl2
+hand_async
+meow_util)
+
+
+
 
 
 add_library(driver_mercury MODULE driver_factory.cpp 
@@ -56,6 +70,10 @@ set(PLUGINDIR "${PROJECT_BINARY_DIR}/mercury/bin/win64")
 set_target_properties(driver_mercury PROPERTIES LIBRARY_OUTPUT_DIRECTORY "${PLUGINDIR}")
 
 set_target_properties(driver_mercury PROPERTIES PREFIX "")
+
+
+set_target_properties(tracking_subprocess PROPERTIES RUNTIME_OUTPUT_DIRECTORY  "${PLUGINDIR}")
+
 
 install(
         DIRECTORY "${PROJECT_BINARY_DIR}/mercury"

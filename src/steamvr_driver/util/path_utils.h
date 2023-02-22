@@ -17,6 +17,8 @@
  */
 bool GetDriverRootPath(std::string& out_path);
 
-bool GetHMDConfig(std::string &out_path, bool pull = true);
+bool GetSubprocessPath(std::string &out_path);
+
+bool GetHMDConfigPath(std::string &out_path, bool pull = true);
 
 bool GetHandTrackingModelsPath(std::string &out_path);
