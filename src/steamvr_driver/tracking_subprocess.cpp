@@ -223,12 +223,13 @@ bool check_vrserver_alive(subprocess_state &state)
     vr::VREvent_t event{};
     while (state.vr_system->PollNextEvent(&event, sizeof(event)))
     {
+        meow_printf("Got event %d", event.eventType);
         switch (event.eventType)
         {
         case vr::VREvent_Quit:
         {
             meow_printf("VRServer quitting!");
-            return false;
+            return true;
         }
         break;
         default:
