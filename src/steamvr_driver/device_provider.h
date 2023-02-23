@@ -38,12 +38,6 @@ private:
     std::unique_ptr<MercuryHandDevice> left_hand_;
     std::unique_ptr<MercuryHandDevice> right_hand_;
 
-    // videoInput video_input_;
-    int camera_idx;
-
-    bool standby_ = false;
-    bool last_frame_hands_tracked_[2] = {false, false};
-
     struct m_relation_history *relation_hist[2];
 
     

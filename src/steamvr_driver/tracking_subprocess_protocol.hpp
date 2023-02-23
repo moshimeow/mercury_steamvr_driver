@@ -23,7 +23,6 @@ struct tracking_message
 struct server_control_message
 {
     bool quit = false;
-    bool standby = false;
 };
 
 #pragma pack(pop)

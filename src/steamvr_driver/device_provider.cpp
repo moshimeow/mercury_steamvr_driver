@@ -14,7 +14,6 @@
 #include "tracking/t_frame_cv_mat_wrapper.hpp"
 #include "os/os_time.h"
 #include "oxr_sdl2_hack.h"
-#include "CameraIdxGuesser.hpp"
 
 #include "tracking_subprocess_protocol.hpp"
 
@@ -101,34 +100,6 @@ vr::EVRInitError DeviceProvider::Init(vr::IVRDriverContext *pDriverContext)
         return vr::VRInitError_Driver_Failed;
     }
 
-#if 0
-
-    DriverLog("Server: Listening!\n");
-
-    // Listen for the subprocess to connect
-    iResult = listen(listenSocket, SOMAXCONN);
-    if (iResult == SOCKET_ERROR)
-    {
-        DriverLog("Error listening for connection: ", WSAGetLastError());
-        closesocket(listenSocket);
-        WSACleanup();
-        return vr::VRInitError_Driver_Failed;
-    }
-    DriverLog("Server: Accepting connection!\n");
-
-    // Accept the connection
-    clientSocket = accept(listenSocket, NULL, NULL);
-    if (clientSocket == INVALID_SOCKET)
-    {
-        DriverLog("Error accepting connection: %d", WSAGetLastError());
-        closesocket(listenSocket);
-        WSACleanup();
-        return vr::VRInitError_Driver_Failed;
-    }
-
-#endif
-
-    xrt_pose head_in_left = XRT_POSE_IDENTITY;
 
     // initialise the hands
     left_hand_ = std::make_unique<MercuryHandDevice>(vr::TrackedControllerRole_LeftHand);
@@ -205,27 +176,6 @@ void DeviceProvider::HandTrackingThread()
 
     while (is_active_)
     {
-
-        struct server_control_message cm = {};
-        cm.quit = false;
-        cm.standby = standby_;
-        iResult = send(clientSocket, (char *)&cm, sizeof(server_control_message), 0);
-        if (iResult == SOCKET_ERROR)
-        {
-            DriverLog("Error receiving data: %d", WSAGetLastError());
-            closesocket(clientSocket);
-            closesocket(listenSocket);
-            WSACleanup();
-            return;
-        }
-
-        // Don't want to get deadlocked on a recv that won't come
-        if (cm.standby)
-        {
-            continue;
-        }
-        // DriverLog("HandTrackingThreadOne!");
-
         // Receive data from the subprocess
         int iResult = 0;
         tracking_message message = {};
@@ -239,87 +189,56 @@ void DeviceProvider::HandTrackingThread()
             WSACleanup();
             return;
         }
-        // printf("Received! Size: %zu, timestamp", message.size, message.timestamp)
 
         if (iResult != TMSIZE)
         {
             DriverLog("Message was the wrong size: %d", iResult);
+            // Sleep a long time so that we don't spam logs
+            os_nanosleep(500 * U_TIME_1MS_IN_NS);
             continue;
         }
 
-        // printf("Size: %zu, timestamp %zu, wrist %f %f %f, %f %f %f %f", message.size, message.timestamp,
-        //        message.hands[0].wrist.position.x, message.hands[0].wrist.position.y, message.hands[0].wrist.position.z message.hands[0].wrist.orientation.w, message.hands[0].wrist.orientation.x, message.hands[0].wrist.orientation.y, message.hands[0].wrist.orientation.z);
-        DriverLog(TM_FMT(message));
-
         xrt_hand_joint_set hands[2] = {};
-
-        // DriverLog("Processing hand joint sets \n");
 
         hjs_from_tracking_message(message.hands[0], hands[0]);
         hjs_from_tracking_message(message.hands[1], hands[1]);
 
         left_hand_->UpdateHandTracking(&hands[0]);
         right_hand_->UpdateHandTracking(&hands[1]);
-
-// This is probably more correct but we can't enter standby anyhow
-#if 0
-        // DriverLog("Updating hand tracking \n");
-
-        bool this_frame_hands_tracked = hands[0].is_active || hands[1].is_active;
-
-        // Either update the tracking with "here's a new pose!"
-        // Or update it with "The hand's not being tracked!"
-
-        if (hands[0].is_active || last_frame_hands_tracked_[0])
-        {
-            left_hand_->UpdateHandTracking(&hands[0]);
-        }
-
-        if (hands[1].is_active || last_frame_hands_tracked_[1]) {
-            right_hand_->UpdateHandTracking(&hands[1]);
-
-        }
-
-        last_frame_hands_tracked_[0] = hands[0].is_active;
-        last_frame_hands_tracked_[1] = hands[1].is_active;
     }
-#endif
-    }
+}
 
-    const char *const *DeviceProvider::GetInterfaceVersions()
+const char *const *DeviceProvider::GetInterfaceVersions()
+{
+    return vr::k_InterfaceVersions;
+}
+
+void DeviceProvider::RunFrame()
+{
+}
+
+// todo: what do we want to do here?
+void DeviceProvider::EnterStandby()
+{
+}
+
+void DeviceProvider::LeaveStandby()
+{
+}
+
+bool DeviceProvider::ShouldBlockStandbyMode()
+{
+    return false;
+}
+
+void DeviceProvider::Cleanup()
+{
+    DriverLog("Mercury Cleaning up!");
+    if (is_active_.exchange(false))
     {
-        return vr::k_InterfaceVersions;
-    }
+        DriverLog("Shutting down hand tracking...");
+        hand_tracking_thread_.join();
 
-    void DeviceProvider::RunFrame()
-    {
+        DriverLog("Hand tracking shutdown.");
     }
-
-    // todo: what do we want to do here?
-    void DeviceProvider::EnterStandby()
-    {
-        standby_ = true;
-    }
-
-    void DeviceProvider::LeaveStandby()
-    {
-        standby_ = false;
-    }
-
-    bool DeviceProvider::ShouldBlockStandbyMode()
-    {
-        return false;
-    }
-
-    void DeviceProvider::Cleanup()
-    {
-        DriverLog("Mercury Cleaning up!");
-        if (is_active_.exchange(false))
-        {
-            DriverLog("Shutting down hand tracking...");
-            hand_tracking_thread_.join();
-
-            DriverLog("Hand tracking shutdown.");
-        }
-        // oxr_sdl2_hack_stop(&this->sdl2_hack);
-    }
+}

@@ -120,13 +120,13 @@ void MercuryHandDevice::UpdateHandTracking(const xrt_hand_joint_set *joint_set)
     pose.poseTimeOffset = 0;
     if (joint_set->is_active)
     {
-        DriverLog("Running_OK");
         pose.result = vr::TrackingResult_Running_OK;
+        pose.poseIsValid = true;
     }
     else
     {
-        DriverLog("Out of range");
         pose.result = vr::TrackingResult_Running_OutOfRange;
+        pose.poseIsValid = false;
     }
 
     for (int i = 0; i < 3; i++)

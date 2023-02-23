@@ -35,7 +35,6 @@ struct subprocess_state
     const char *port;
     const char *vive_config_location;
     bool running = true;
-    bool standby = false;
 
     SOCKET connectSocket;
 
@@ -168,7 +167,8 @@ xrt_pose GetPose(const vr::HmdMatrix34_t &matrix)
 void hjs_to_tracking_message(subprocess_state &state, xrt_hand_joint_set &set, xrt_pose attached_head, struct tracking_message_hand &msg)
 {
     msg.tracked = set.is_active;
-    if (!msg.tracked) {
+    if (!msg.tracked)
+    {
         return;
     }
 
@@ -198,26 +198,6 @@ void hjs_to_tracking_message(subprocess_state &state, xrt_hand_joint_set &set, x
     }
 }
 
-void listen_for_server_input(subprocess_state *state)
-{
-    while (true)
-    {
-        struct server_control_message cm = {};
-        int iResult = recv(state->connectSocket, (char *)&cm, sizeof(server_control_message), 0);
-
-        if (iResult == SOCKET_ERROR)
-        {
-            meow_printf("Error receiving data: %d", WSAGetLastError());
-            state->running = false;
-            return;
-        }
-        state->running = !cm.quit;
-        state->standby = cm.standby;
-
-        meow_printf("Received! %d %d", cm.quit, cm.standby);
-    }
-}
-
 bool check_vrserver_alive(subprocess_state &state)
 {
     vr::VREvent_t event{};
@@ -229,7 +209,7 @@ bool check_vrserver_alive(subprocess_state &state)
         case vr::VREvent_Quit:
         {
             meow_printf("VRServer quitting!");
-            return true;
+            return false;
         }
         break;
         default:
@@ -336,21 +316,9 @@ int main(int argc, char **argv)
     u_var_add_root(&state, "SteamVR driver!", 0);
 
     u_var_add_bool(&state, &state.running, "Running");
-    
-    
-    meow_printf("Making watch thread");
-
-    std::thread watch_thread(listen_for_server_input, &state);
-
-    meow_printf("Done making watch thread");
 
     while (state.running)
     {
-        if (state.standby) {
-            meow_printf("In standby mode!");
-            os_nanosleep(200*U_TIME_1MS_IN_NS);
-            continue;
-        }
         if (!check_vrserver_alive(state))
         {
             break;
@@ -441,8 +409,6 @@ int main(int argc, char **argv)
     // Close the socket and cleanup Winsock
     closesocket(state.connectSocket);
     WSACleanup();
-
-    watch_thread.join();
 
     meow_exit();
 
