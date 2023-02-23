@@ -35,6 +35,7 @@ struct subprocess_state
     const char *port;
     const char *vive_config_location;
     bool running = true;
+    bool standby = false;
 
     SOCKET connectSocket;
 
@@ -65,8 +66,6 @@ std::string read_file(std::string_view path)
 
 bool setup_camera_and_ht(subprocess_state &state)
 {
-    // MessageBoxA(nullptr, "Index index", "Meow meow meow", MB_OK);
-
     int match_idx = -1;
 
     for (int i = 0; i < 10; i++)
@@ -168,12 +167,10 @@ xrt_pose GetPose(const vr::HmdMatrix34_t &matrix)
 
 void hjs_to_tracking_message(subprocess_state &state, xrt_hand_joint_set &set, xrt_pose attached_head, struct tracking_message_hand &msg)
 {
-
-    if (!set.is_active)
-    {
-        msg.tracked = false;
+    msg.tracked = set.is_active;
+    if (!msg.tracked) {
+        return;
     }
-    msg.tracked = true;
 
     xrt_space_relation wrist = set.values.hand_joint_set_default[XRT_HAND_JOINT_WRIST].relation;
 
@@ -201,21 +198,24 @@ void hjs_to_tracking_message(subprocess_state &state, xrt_hand_joint_set &set, x
     }
 }
 
-void listen_for_server_input()
+void listen_for_server_input(subprocess_state *state)
 {
-    // What data do we need to listen to anyway?
-    // // Receive data from the parent process
-    // char recvBuffer[1024];
-    // iResult = recv(state.connectSocket, recvBuffer, sizeof(recvBuffer), 0);
-    // if (iResult == SOCKET_ERROR)
-    // {
-    //     meow_printf( "Error receiving data: " << WSAGetLastError() );
-    //     closesocket(state.connectSocket);
-    //     WSACleanup();
-    //     return 1;
-    // }
-    // recvBuffer[iResult] = '\0';
-    // meow_printf( "Received data from parent process: " << recvBuffer );
+    while (true)
+    {
+        struct server_control_message cm = {};
+        int iResult = recv(state->connectSocket, (char *)&cm, sizeof(server_control_message), 0);
+
+        if (iResult == SOCKET_ERROR)
+        {
+            meow_printf("Error receiving data: %d", WSAGetLastError());
+            state->running = false;
+            return;
+        }
+        state->running = !cm.quit;
+        state->standby = cm.standby;
+
+        meow_printf("Received! %d %d", cm.quit, cm.standby);
+    }
 }
 
 bool check_vrserver_alive(subprocess_state &state)
@@ -251,7 +251,6 @@ int meow_exit()
 int main(int argc, char **argv)
 {
     meow_printf("Starting!");
-
 
     if (argc < 3)
     {
@@ -290,7 +289,6 @@ int main(int argc, char **argv)
     // This is an "out" struct, which we won't bother with looking at.
     WSADATA wsaData;
 
-    // MessageBoxA(nullptr, "WSAStartup", "Meow meow meow", MB_OK);
     meow_printf("WSAStartup");
     // It's also supposedly fine to have multiple overlapping calls to WSAStartup and WSACleanup. Wow Windows commits some *crimes* but alrighty
     int iResult = WSAStartup(MAKEWORD(2, 2), &wsaData);
@@ -338,15 +336,23 @@ int main(int argc, char **argv)
     u_var_add_root(&state, "SteamVR driver!", 0);
 
     u_var_add_bool(&state, &state.running, "Running");
+    
+    
     meow_printf("Making watch thread");
 
-    // std::thread(&watch_for_server_quit, &state);
+    std::thread watch_thread(listen_for_server_input, &state);
 
     meow_printf("Done making watch thread");
 
     while (state.running)
     {
-        if (!check_vrserver_alive(state)) {
+        if (state.standby) {
+            meow_printf("In standby mode!");
+            os_nanosleep(200*U_TIME_1MS_IN_NS);
+            continue;
+        }
+        if (!check_vrserver_alive(state))
+        {
             break;
         }
         cv::Mat mat_ = {};
@@ -402,6 +408,12 @@ int main(int argc, char **argv)
         uint64_t out_timestamp;
         t_ht_sync_process(state.sync, frames[0], frames[1], &hands[0], &hands[1], &out_timestamp);
 
+        for (int i = 0; i < 2; i++)
+        {
+            // Don't need 'em
+            xrt_frame_reference(&frames[i], NULL);
+        }
+
         tracking_message message = {};
 
         message.size = TMSIZE;
@@ -426,11 +438,11 @@ int main(int argc, char **argv)
 
     vr::VR_Shutdown();
 
-    // return 0;
-
     // Close the socket and cleanup Winsock
     closesocket(state.connectSocket);
     WSACleanup();
+
+    watch_thread.join();
 
     meow_exit();
 

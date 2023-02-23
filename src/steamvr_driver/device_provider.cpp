@@ -128,13 +128,11 @@ vr::EVRInitError DeviceProvider::Init(vr::IVRDriverContext *pDriverContext)
 
 #endif
 
-
     xrt_pose head_in_left = XRT_POSE_IDENTITY;
 
-
     // initialise the hands
-    left_hand_ = std::make_unique<MercuryHandDevice>(vr::TrackedControllerRole_LeftHand, head_in_left);
-    right_hand_ = std::make_unique<MercuryHandDevice>(vr::TrackedControllerRole_RightHand, head_in_left);
+    left_hand_ = std::make_unique<MercuryHandDevice>(vr::TrackedControllerRole_LeftHand);
+    right_hand_ = std::make_unique<MercuryHandDevice>(vr::TrackedControllerRole_RightHand);
 
     // vr::TrackedDeviceClass_GenericTracker seems to not work
 
@@ -145,7 +143,6 @@ vr::EVRInitError DeviceProvider::Init(vr::IVRDriverContext *pDriverContext)
                                                  vr::TrackedDeviceClass_Controller,
                                                  right_hand_.get());
 
-
     is_active_ = true;
     hand_tracking_thread_ = std::thread(&DeviceProvider::HandTrackingThread, this);
 
@@ -154,19 +151,15 @@ vr::EVRInitError DeviceProvider::Init(vr::IVRDriverContext *pDriverContext)
 
 void hjs_from_tracking_message(const struct tracking_message_hand &msg, xrt_hand_joint_set &set)
 {
-    if (!msg.tracked)
+    set.is_active = msg.tracked;
+    if (!set.is_active)
     {
-        set.is_active = false;
         return;
     }
-    set.is_active = true;
 
     const enum xrt_space_relation_flags valid_flags_ht = (enum xrt_space_relation_flags)(
         XRT_SPACE_RELATION_ORIENTATION_VALID_BIT | XRT_SPACE_RELATION_ORIENTATION_TRACKED_BIT |
         XRT_SPACE_RELATION_POSITION_VALID_BIT | XRT_SPACE_RELATION_POSITION_TRACKED_BIT);
-
-    // set.values.hand_joint_set_default[XRT_HAND_JOINT_WRIST].relation.pose = msg.wrist;
-    // set.values.hand_joint_set_default[XRT_HAND_JOINT_WRIST].relation.relation_flags = valid_flags_ht;
 
     for (int i = 0; i < XRT_HAND_JOINT_COUNT; i++)
     {
@@ -184,18 +177,18 @@ void hjs_from_tracking_message(const struct tracking_message_hand &msg, xrt_hand
 void DeviceProvider::HandTrackingThread()
 {
 #if 1
-    DriverLog( "Server: Listening!\n");
+    DriverLog("Server: Listening!\n");
 
     // Listen for the subprocess to connect
     int iResult = listen(listenSocket, SOMAXCONN);
     if (iResult == SOCKET_ERROR)
     {
-        DriverLog( "Error listening for connection: %d", WSAGetLastError());
+        DriverLog("Error listening for connection: %d", WSAGetLastError());
         closesocket(listenSocket);
         WSACleanup();
         return;
     }
-    DriverLog( "Server: Accepting connection!\n");
+    DriverLog("Server: Accepting connection!\n");
 
     // Accept the connection
     clientSocket = accept(listenSocket, NULL, NULL);
@@ -212,13 +205,32 @@ void DeviceProvider::HandTrackingThread()
 
     while (is_active_)
     {
-        DriverLog("HandTrackingThreadOne!");
+
+        struct server_control_message cm = {};
+        cm.quit = false;
+        cm.standby = standby_;
+        iResult = send(clientSocket, (char *)&cm, sizeof(server_control_message), 0);
+        if (iResult == SOCKET_ERROR)
+        {
+            DriverLog("Error receiving data: %d", WSAGetLastError());
+            closesocket(clientSocket);
+            closesocket(listenSocket);
+            WSACleanup();
+            return;
+        }
+
+        // Don't want to get deadlocked on a recv that won't come
+        if (cm.standby)
+        {
+            continue;
+        }
+        // DriverLog("HandTrackingThreadOne!");
 
         // Receive data from the subprocess
         int iResult = 0;
         tracking_message message = {};
         iResult = recv(clientSocket, (char *)&message, TMSIZE, MSG_WAITALL);
-        DriverLog("Received! Result: %d", iResult);
+        // DriverLog("Received! Result: %d", iResult);
         if (iResult == SOCKET_ERROR)
         {
             DriverLog("Error receiving data: %d", WSAGetLastError());
@@ -241,50 +253,73 @@ void DeviceProvider::HandTrackingThread()
 
         xrt_hand_joint_set hands[2] = {};
 
-        DriverLog("Processing hand joint sets \n");
+        // DriverLog("Processing hand joint sets \n");
 
         hjs_from_tracking_message(message.hands[0], hands[0]);
         hjs_from_tracking_message(message.hands[1], hands[1]);
 
-        DriverLog("Updating hand tracking \n");
+        left_hand_->UpdateHandTracking(&hands[0]);
+        right_hand_->UpdateHandTracking(&hands[1]);
 
-        if (hands[0].is_active)
+// This is probably more correct but we can't enter standby anyhow
+#if 0
+        // DriverLog("Updating hand tracking \n");
+
+        bool this_frame_hands_tracked = hands[0].is_active || hands[1].is_active;
+
+        // Either update the tracking with "here's a new pose!"
+        // Or update it with "The hand's not being tracked!"
+
+        if (hands[0].is_active || last_frame_hands_tracked_[0])
+        {
             left_hand_->UpdateHandTracking(&hands[0]);
-        if (hands[1].is_active)
+        }
+
+        if (hands[1].is_active || last_frame_hands_tracked_[1]) {
             right_hand_->UpdateHandTracking(&hands[1]);
+
+        }
+
+        last_frame_hands_tracked_[0] = hands[0].is_active;
+        last_frame_hands_tracked_[1] = hands[1].is_active;
+    }
+#endif
     }
 
-    // cap.release();
-}
-
-const char *const *DeviceProvider::GetInterfaceVersions()
-{
-    return vr::k_InterfaceVersions;
-}
-
-void DeviceProvider::RunFrame()
-{
-}
-
-// todo: what do we want to do here?
-void DeviceProvider::EnterStandby() {}
-
-void DeviceProvider::LeaveStandby() {}
-
-bool DeviceProvider::ShouldBlockStandbyMode()
-{
-    return false;
-}
-
-void DeviceProvider::Cleanup()
-{
-    DriverLog("Mercury Cleaning up!");
-    if (is_active_.exchange(false))
+    const char *const *DeviceProvider::GetInterfaceVersions()
     {
-        DriverLog("Shutting down hand tracking...");
-        hand_tracking_thread_.join();
-
-        DriverLog("Hand tracking shutdown.");
+        return vr::k_InterfaceVersions;
     }
-    // oxr_sdl2_hack_stop(&this->sdl2_hack);
-}
+
+    void DeviceProvider::RunFrame()
+    {
+    }
+
+    // todo: what do we want to do here?
+    void DeviceProvider::EnterStandby()
+    {
+        standby_ = true;
+    }
+
+    void DeviceProvider::LeaveStandby()
+    {
+        standby_ = false;
+    }
+
+    bool DeviceProvider::ShouldBlockStandbyMode()
+    {
+        return false;
+    }
+
+    void DeviceProvider::Cleanup()
+    {
+        DriverLog("Mercury Cleaning up!");
+        if (is_active_.exchange(false))
+        {
+            DriverLog("Shutting down hand tracking...");
+            hand_tracking_thread_.join();
+
+            DriverLog("Hand tracking shutdown.");
+        }
+        // oxr_sdl2_hack_stop(&this->sdl2_hack);
+    }
