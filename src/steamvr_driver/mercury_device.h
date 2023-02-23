@@ -27,7 +27,7 @@ public:
 
     void DebugRequest(const char *pchRequest, char *pchResponseBuffer, uint32_t unResponseBufferSize) override;
 
-    void UpdateWristPose(uint64_t timestamp, xrt_pose head_pose);
+    void UpdateWristPose (uint64_t timestamp);
 
     vr::DriverPose_t GetPose() override;
     std::string GetSerialNumber();

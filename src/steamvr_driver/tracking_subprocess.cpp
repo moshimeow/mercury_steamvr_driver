@@ -180,7 +180,7 @@ void hjs_to_tracking_message(subprocess_state &state, xrt_hand_joint_set &set, x
     m_relation_chain_push_relation(&xrc_wrist, &wrist);
     // TODO ADD HEAD OFFSET HERE
     m_relation_chain_push_pose(&xrc_wrist, &state.left_camera_in_head);
-    // m_relation_chain_push_pose(&xrc_wrist, &attached_head);
+    m_relation_chain_push_pose(&xrc_wrist, &attached_head);
 
     m_relation_chain_resolve(&xrc_wrist, &tmp);
 

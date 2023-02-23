@@ -20,28 +20,6 @@
 
 namespace xat = xrt::auxiliary::tracking;
 
-xrt_pose GetPose(const vr::HmdMatrix34_t &matrix)
-{
-    xrt_quat q{};
-    xrt_vec3 v = {matrix.m[0][3], matrix.m[1][3], matrix.m[2][3]};
-
-    q.w = sqrt(fmax(0, 1 + matrix.m[0][0] + matrix.m[1][1] + matrix.m[2][2])) / 2;
-    q.x = sqrt(fmax(0, 1 + matrix.m[0][0] - matrix.m[1][1] - matrix.m[2][2])) / 2;
-    q.y = sqrt(fmax(0, 1 - matrix.m[0][0] + matrix.m[1][1] - matrix.m[2][2])) / 2;
-    q.z = sqrt(fmax(0, 1 - matrix.m[0][0] - matrix.m[1][1] + matrix.m[2][2])) / 2;
-
-    q.x = copysign(q.x, matrix.m[2][1] - matrix.m[1][2]);
-    q.y = copysign(q.y, matrix.m[0][2] - matrix.m[2][0]);
-    q.z = copysign(q.z, matrix.m[1][0] - matrix.m[0][1]);
-
-    return {q, v};
-}
-
-void TrackedDevicePose_To_xrt_pose(vr::TrackedDevicePose_t &hmd_pose, xrt_pose &out)
-{
-    out = GetPose(hmd_pose.mDeviceToAbsoluteTracking);
-}
-
 vr::EVRInitError DeviceProvider::Init(vr::IVRDriverContext *pDriverContext)
 {
     VR_INIT_SERVER_DRIVER_CONTEXT(pDriverContext);
@@ -157,7 +135,7 @@ void hjs_from_tracking_message(const struct tracking_message_hand &msg, xrt_hand
         }
         return;
     }
-
+    
     for (int i = 0; i < XRT_HAND_JOINT_COUNT; i++)
     {
         set.values.hand_joint_set_default[i].relation.pose = msg.fingers_relative[i];
@@ -259,18 +237,10 @@ void DeviceProvider::RunFrame()
 {
     uint64_t t = os_monotonic_get_ns();
 
-    // vrGetRawTracke
-    vr::TrackedDevicePose_t hmd_pose;
-    vr::VRServerDriverHost()->GetRawTrackedDevicePoses(-0.04, &hmd_pose, 1);
-
-    xrt_pose xhmd_pose;
-
-    TrackedDevicePose_To_xrt_pose(hmd_pose, xhmd_pose);
-
     t -= U_TIME_1MS_IN_NS * 40;
 
-    left_hand_->UpdateWristPose(t, xhmd_pose);
-    right_hand_->UpdateWristPose(t, xhmd_pose);
+    left_hand_->UpdateWristPose(t);
+    right_hand_->UpdateWristPose(t);
 }
 
 // todo: what do we want to do here?

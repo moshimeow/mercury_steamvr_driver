@@ -122,13 +122,13 @@ void MercuryHandDevice::UpdateFingerPose(const xrt_hand_joint_set *joint_set)
                                                  OPENVR_BONE_COUNT);
 }
 
-void MercuryHandDevice::UpdateWristPose(uint64_t timestamp, xrt_pose head_pose)
+void MercuryHandDevice::UpdateWristPose(uint64_t timestamp)
 {
 
     //! @todo Fragile! Depends on hand_joint_set_default->hand_relation being identity.
-    struct xrt_space_relation wrist_pose_in_local;
+    struct xrt_space_relation wrist_pose_in_global;
 
-    enum m_relation_history_result result = m_relation_history_get(wrist_hist_, timestamp, &wrist_pose_in_local);
+    enum m_relation_history_result result = m_relation_history_get(wrist_hist_, timestamp, &wrist_pose_in_global);
 
     // Calculate a new fake controller pose
     vr::DriverPose_t pose{};
@@ -138,9 +138,6 @@ void MercuryHandDevice::UpdateWristPose(uint64_t timestamp, xrt_pose head_pose)
     pose.deviceIsConnected = true;
     pose.poseTimeOffset = 0;
 
-    struct xrt_space_relation wrist_pose_in_global;
-    struct xrt_relation_chain xrc = {};
-
     if (result == M_RELATION_HISTORY_RESULT_INVALID)
     {
         pose.result = vr::TrackingResult_Running_OutOfRange;
@@ -148,7 +145,7 @@ void MercuryHandDevice::UpdateWristPose(uint64_t timestamp, xrt_pose head_pose)
         goto update;
     }
 
-    if (wrist_pose_in_local.relation_flags == XRT_SPACE_RELATION_BITMASK_NONE)
+    if (wrist_pose_in_global.relation_flags == XRT_SPACE_RELATION_BITMASK_NONE)
     {
         pose.result = vr::TrackingResult_Running_OutOfRange;
         pose.poseIsValid = false;
@@ -167,14 +164,11 @@ void MercuryHandDevice::UpdateWristPose(uint64_t timestamp, xrt_pose head_pose)
 
     pose.qWorldFromDriverRotation = {1, 0, 0, 0};
 
-    m_relation_chain_push_relation(&xrc, &wrist_pose_in_local);
-    // m_relation_chain_push_pose_if_not_identity(&xrc, &this->left_camera_in_head);
-    m_relation_chain_push_pose_if_not_identity(&xrc, &head_pose);
-    m_relation_chain_resolve(&xrc, &wrist_pose_in_global);
-
     pose.vecPosition[0] = wrist_pose_in_global.pose.position.x;
     pose.vecPosition[1] = wrist_pose_in_global.pose.position.y;
     pose.vecPosition[2] = wrist_pose_in_global.pose.position.z;
+
+    // DriverLog("%d %f %f %f", relhistget, pose.vecPosition[0], pose.vecPosition[1], pose.vecPosition[2]);
 
     convert_quaternion(wrist_pose_in_global.pose.orientation, pose.qRotation);
 
