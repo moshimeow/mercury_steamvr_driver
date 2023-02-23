@@ -1,6 +1,17 @@
 #include "mercury_device.h"
 
 #include "driver_log.h"
+#include "math/m_relation_history.h"
+
+MercuryHandDevice::MercuryHandDevice(vr::ETrackedControllerRole role) : role_(role)
+{
+    m_relation_history_create(&this->wrist_hist_);
+}
+
+MercuryHandDevice::~MercuryHandDevice()
+{
+    m_relation_history_destroy(&this->wrist_hist_);
+}
 
 vr::EVRInitError MercuryHandDevice::Activate(uint32_t unObjectId)
 {
@@ -93,7 +104,7 @@ void convert_vec3(const T &p_quatA, U &p_quatB)
 }
 
 // Updates the poses of the fake controllers as well as the finger poses
-void MercuryHandDevice::UpdateHandTracking(const xrt_hand_joint_set *joint_set)
+void MercuryHandDevice::UpdateFingerPose(const xrt_hand_joint_set *joint_set)
 {
     if (!this->has_activated_)
         return;
@@ -109,6 +120,15 @@ void MercuryHandDevice::UpdateHandTracking(const xrt_hand_joint_set *joint_set)
     vr::VRDriverInput()->UpdateSkeletonComponent(skeleton_component_handle_,
                                                  vr::VRSkeletalMotionRange_WithoutController, bone_transforms_,
                                                  OPENVR_BONE_COUNT);
+}
+
+void MercuryHandDevice::UpdateWristPose(uint64_t timestamp)
+{
+
+    //! @todo Fragile! Depends on hand_joint_set_default->hand_relation being identity.
+    struct xrt_space_relation wrist_pose_in_global;
+
+    enum m_relation_history_result result = m_relation_history_get(wrist_hist_, timestamp, &wrist_pose_in_global);
 
     // Calculate a new fake controller pose
     vr::DriverPose_t pose{};
@@ -116,18 +136,24 @@ void MercuryHandDevice::UpdateHandTracking(const xrt_hand_joint_set *joint_set)
     pose.qWorldFromDriverRotation.w = 1;
 
     pose.deviceIsConnected = true;
-    pose.poseIsValid = true;
     pose.poseTimeOffset = 0;
-    if (joint_set->is_active)
-    {
-        pose.result = vr::TrackingResult_Running_OK;
-        pose.poseIsValid = true;
-    }
-    else
+
+    if (result == M_RELATION_HISTORY_RESULT_INVALID)
     {
         pose.result = vr::TrackingResult_Running_OutOfRange;
         pose.poseIsValid = false;
+        goto update;
     }
+
+    if (wrist_pose_in_global.relation_flags == XRT_SPACE_RELATION_BITMASK_NONE)
+    {
+        pose.result = vr::TrackingResult_Running_OutOfRange;
+        pose.poseIsValid = false;
+        goto update;
+    }
+
+    pose.result = vr::TrackingResult_Running_OK;
+    pose.poseIsValid = true;
 
     for (int i = 0; i < 3; i++)
     {
@@ -138,15 +164,16 @@ void MercuryHandDevice::UpdateHandTracking(const xrt_hand_joint_set *joint_set)
 
     pose.qWorldFromDriverRotation = {1, 0, 0, 0};
 
-    //! @todo Fragile! Depends on hand_joint_set_default->hand_relation being identity.
-    struct xrt_space_relation wrist_pose_in_global = joint_set->values.hand_joint_set_default[XRT_HAND_JOINT_WRIST].relation;
-
     pose.vecPosition[0] = wrist_pose_in_global.pose.position.x;
     pose.vecPosition[1] = wrist_pose_in_global.pose.position.y;
     pose.vecPosition[2] = wrist_pose_in_global.pose.position.z;
+
+    // DriverLog("%d %f %f %f", relhistget, pose.vecPosition[0], pose.vecPosition[1], pose.vecPosition[2]);
+
     convert_quaternion(wrist_pose_in_global.pose.orientation, pose.qRotation);
 
-    // Update the fake controller pose
+// Update the fake controller pose
+update:
     vr::VRServerDriverHost()->TrackedDevicePoseUpdated(device_id_, pose, sizeof(vr::DriverPose_t));
 }
 

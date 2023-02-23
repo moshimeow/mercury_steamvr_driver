@@ -16,6 +16,7 @@
 #include "oxr_sdl2_hack.h"
 
 #include "tracking_subprocess_protocol.hpp"
+#include "math/m_relation_history.h"
 
 namespace xat = xrt::auxiliary::tracking;
 
@@ -100,7 +101,6 @@ vr::EVRInitError DeviceProvider::Init(vr::IVRDriverContext *pDriverContext)
         return vr::VRInitError_Driver_Failed;
     }
 
-
     // initialise the hands
     left_hand_ = std::make_unique<MercuryHandDevice>(vr::TrackedControllerRole_LeftHand);
     right_hand_ = std::make_unique<MercuryHandDevice>(vr::TrackedControllerRole_RightHand);
@@ -120,29 +120,42 @@ vr::EVRInitError DeviceProvider::Init(vr::IVRDriverContext *pDriverContext)
     return vr::VRInitError_None;
 }
 
+const static enum xrt_space_relation_flags valid_flags_ht = (enum xrt_space_relation_flags)(
+    XRT_SPACE_RELATION_ORIENTATION_VALID_BIT | XRT_SPACE_RELATION_ORIENTATION_TRACKED_BIT |
+    XRT_SPACE_RELATION_POSITION_VALID_BIT | XRT_SPACE_RELATION_POSITION_TRACKED_BIT);
+
 void hjs_from_tracking_message(const struct tracking_message_hand &msg, xrt_hand_joint_set &set)
 {
     set.is_active = msg.tracked;
     if (!set.is_active)
     {
+        for (int i = 0; i < XRT_HAND_JOINT_COUNT; i++)
+        {
+            set.values.hand_joint_set_default[i].relation.relation_flags = XRT_SPACE_RELATION_BITMASK_NONE;
+        }
         return;
     }
-
-    const enum xrt_space_relation_flags valid_flags_ht = (enum xrt_space_relation_flags)(
-        XRT_SPACE_RELATION_ORIENTATION_VALID_BIT | XRT_SPACE_RELATION_ORIENTATION_TRACKED_BIT |
-        XRT_SPACE_RELATION_POSITION_VALID_BIT | XRT_SPACE_RELATION_POSITION_TRACKED_BIT);
-
+    
     for (int i = 0; i < XRT_HAND_JOINT_COUNT; i++)
     {
-        struct xrt_relation_chain xrc = {};
-        xrt_space_relation tmp = {};
-        m_relation_chain_push_pose(&xrc, &msg.fingers_relative[i]);
-        m_relation_chain_push_pose(&xrc, &msg.wrist);
-        m_relation_chain_resolve(&xrc, &tmp);
-
-        set.values.hand_joint_set_default[i].relation = tmp;
+        set.values.hand_joint_set_default[i].relation.pose = msg.fingers_relative[i];
         set.values.hand_joint_set_default[i].relation.relation_flags = valid_flags_ht;
     }
+}
+
+xrt_space_relation handle_wrist_pose(const struct tracking_message_hand &msg)
+{
+    xrt_space_relation tmp;
+
+    if (!msg.tracked)
+    {
+        tmp.relation_flags = XRT_SPACE_RELATION_BITMASK_NONE;
+        return tmp;
+    }
+    tmp.relation_flags = valid_flags_ht;
+
+    tmp.pose = msg.wrist;
+    return tmp;
 }
 
 void DeviceProvider::HandTrackingThread()
@@ -197,14 +210,21 @@ void DeviceProvider::HandTrackingThread()
             os_nanosleep(500 * U_TIME_1MS_IN_NS);
             continue;
         }
-
         xrt_hand_joint_set hands[2] = {};
 
         hjs_from_tracking_message(message.hands[0], hands[0]);
         hjs_from_tracking_message(message.hands[1], hands[1]);
 
-        left_hand_->UpdateHandTracking(&hands[0]);
-        right_hand_->UpdateHandTracking(&hands[1]);
+        left_hand_->UpdateFingerPose(&hands[0]);
+        right_hand_->UpdateFingerPose(&hands[1]);
+
+        xrt_space_relation wrists[2] = {};
+
+        wrists[0] = handle_wrist_pose(message.hands[0]);
+        wrists[1] = handle_wrist_pose(message.hands[1]);
+
+        m_relation_history_push(left_hand_->wrist_hist_, &wrists[0], message.timestamp);
+        m_relation_history_push(right_hand_->wrist_hist_, &wrists[1], message.timestamp);
     }
 }
 
@@ -215,6 +235,12 @@ const char *const *DeviceProvider::GetInterfaceVersions()
 
 void DeviceProvider::RunFrame()
 {
+    uint64_t t = os_monotonic_get_ns();
+
+    t -= U_TIME_1MS_IN_NS * 40;
+
+    left_hand_->UpdateWristPose(t);
+    right_hand_->UpdateWristPose(t);
 }
 
 // todo: what do we want to do here?

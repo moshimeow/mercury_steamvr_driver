@@ -38,7 +38,7 @@ private:
     std::unique_ptr<MercuryHandDevice> left_hand_;
     std::unique_ptr<MercuryHandDevice> right_hand_;
 
-    struct m_relation_history *relation_hist[2];
+    // struct m_relation_history *relation_hist[2];
 
     
     void* sdl2_hack = NULL;

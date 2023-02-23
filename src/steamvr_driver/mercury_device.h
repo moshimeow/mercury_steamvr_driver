@@ -12,11 +12,12 @@
 class MercuryHandDevice : public vr::ITrackedDeviceServerDriver
 {
 public:
-    explicit MercuryHandDevice(vr::ETrackedControllerRole role) : role_(role) {}
+    explicit MercuryHandDevice(vr::ETrackedControllerRole role);
+    ~MercuryHandDevice();
 
     vr::EVRInitError Activate(uint32_t unObjectId) override;
 
-    void UpdateHandTracking(const xrt_hand_joint_set *joint_set);
+    void UpdateFingerPose(const xrt_hand_joint_set *joint_set);
 
     void Deactivate() override;
 
@@ -26,19 +27,27 @@ public:
 
     void DebugRequest(const char *pchRequest, char *pchResponseBuffer, uint32_t unResponseBufferSize) override;
 
+    void UpdateWristPose (uint64_t timestamp);
+
     vr::DriverPose_t GetPose() override;
     std::string GetSerialNumber();
+
+
+    struct m_relation_history *wrist_hist_;
+    xrt_hand_joint_set hand_joint_set_wrist_local;
+    vr::VRBoneTransform_t bone_transforms_[OPENVR_BONE_COUNT];
+    vr::ETrackedControllerRole role_;
+
+    // bool hand_is_active_ = false;
 
 private:
     bool IsLeftHand();
 
     vr::TrackedDeviceIndex_t device_id_;
-    vr::ETrackedControllerRole role_;
 
-    vr::VRBoneTransform_t bone_transforms_[OPENVR_BONE_COUNT];
     vr::VRInputComponentHandle_t skeleton_component_handle_;
 
     std::atomic<bool> has_activated_;
 
-    int shadow_controller_ = -1;
+
 };
