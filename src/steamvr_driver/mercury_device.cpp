@@ -56,10 +56,15 @@ vr::EVRInitError MercuryHandDevice::Activate(uint32_t unObjectId)
         OPENVR_BONE_COUNT,
         &skeleton_component_handle_);
 
+    vr::VRDriverInput()->CreateBooleanComponent(props, "/input/trigger/click", &trigger_click_);
+    vr::VRDriverInput()->CreateBooleanComponent(props, "/input/trigger/value", &trigger_value_);
+
     // below, as-is, broke hand tracking input. Unsure.
     // The role hint is different from the role, so this should be fine.
     // vr::VRProperties()->SetInt32Property(props, vr::Prop_ControllerRoleHint_Int32, IsLeftHand() ? vr::TrackedControllerRole_RightHand : vr::TrackedControllerRole_LeftHand);
-    vr::VRProperties()->SetUint64Property(props, vr::Prop_SupportedButtons_Uint64, 0);
+
+    // What does this do?
+    // vr::VRProperties()->SetUint64Property(props, vr::Prop_SupportedButtons_Uint64, 0);
 
     this->has_activated_ = true;
 
@@ -204,6 +209,17 @@ void MercuryHandDevice::UpdateWristPose(uint64_t timestamp)
 // Update the fake controller pose
 update:
     vr::VRServerDriverHost()->TrackedDevicePoseUpdated(device_id_, pose, sizeof(vr::DriverPose_t));
+}
+
+void MercuryHandDevice::UpdateFakeControllerInput(bool trigger)
+{
+    if (trigger_ != trigger)
+    {
+        DriverLog("Updated ! %d", trigger);
+        vr::VRDriverInput()->UpdateBooleanComponent(trigger_click_, trigger, 0);
+        vr::VRDriverInput()->UpdateScalarComponent(trigger_value_, trigger ? 1.0f : 0.0f, 0);
+    }
+    trigger_ = trigger;
 }
 
 // todo: what do we want to do here?

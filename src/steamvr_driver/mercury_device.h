@@ -29,7 +29,7 @@ public:
 
     void UpdateWristPose (uint64_t timestamp);
 
-    // void Monster300HzThread();
+    void MercuryHandDevice::UpdateFakeControllerInput(bool trigger);
 
     vr::DriverPose_t GetPose() override;
     std::string GetSerialNumber();
@@ -40,7 +40,12 @@ public:
     vr::VRBoneTransform_t bone_transforms_[OPENVR_BONE_COUNT];
     vr::ETrackedControllerRole role_;
 
+    vr::VRInputComponentHandle_t trigger_click_;
+    vr::VRInputComponentHandle_t trigger_value_;
+
     // bool hand_is_active_ = false;
+
+    bool trigger_ = false;
 
 private:
     bool IsLeftHand();

@@ -26,6 +26,8 @@
 #include "openvr.h"
 #include "u_subprocess_logging.h"
 
+#include "pinch_decider.hpp"
+
 #define meow_printf U_SP_LOG_E
 
 namespace xat = xrt::auxiliary::tracking;
@@ -45,6 +47,8 @@ struct subprocess_state
     xrt_pose left_camera_in_head;
 
     struct t_hand_tracking_sync *sync = nullptr;
+
+    bool pinch[2] = {false, false};
 };
 
 std::string read_file(std::string_view path)
@@ -164,13 +168,17 @@ xrt_pose GetPose(const vr::HmdMatrix34_t &matrix)
     return {q, v};
 }
 
-void hjs_to_tracking_message(subprocess_state &state, xrt_hand_joint_set &set, xrt_pose attached_head, struct tracking_message_hand &msg)
+void hjs_to_tracking_message(subprocess_state &state, int hand_idx, xrt_hand_joint_set &set, xrt_pose attached_head, struct tracking_message_hand &msg)
 {
     msg.tracked = set.is_active;
     if (!msg.tracked)
     {
         return;
     }
+
+    trigger_decide(set, &state.pinch[hand_idx]);
+
+    msg.trigger = state.pinch[hand_idx];
 
     xrt_space_relation wrist = set.values.hand_joint_set_default[XRT_HAND_JOINT_WRIST].relation;
 
@@ -388,8 +396,8 @@ int main(int argc, char **argv)
         message.size = TMSIZE;
         message.camera_timestamp = time_camera;
         message.host_recieved_frame_timestamp = time_now_uint;
-        hjs_to_tracking_message(state, hands[0], attached_hmd_pose, message.hands[0]);
-        hjs_to_tracking_message(state, hands[1], attached_hmd_pose, message.hands[1]);
+        hjs_to_tracking_message(state, 0, hands[0], attached_hmd_pose, message.hands[0]);
+        hjs_to_tracking_message(state, 1, hands[1], attached_hmd_pose, message.hands[1]);
 
         // Send data to the parent process
         // char *sendBuffer = ;

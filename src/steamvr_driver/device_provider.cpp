@@ -282,6 +282,9 @@ void DeviceProvider::HandTrackingThread()
         m_relation_history_push(left_hand_->wrist_hist_, &wrists[0], message.camera_timestamp);
         m_relation_history_push(right_hand_->wrist_hist_, &wrists[1], message.camera_timestamp);
 
+        left_hand_->UpdateFakeControllerInput(message.hands[0].trigger);
+        right_hand_->UpdateFakeControllerInput(message.hands[1].trigger);
+
 #ifdef TIMING_DEBUGGING
         timestamps_debug_ << std::to_string(message.camera_timestamp) << ", "
                           << std::to_string(message.host_recieved_frame_timestamp) << ", "
