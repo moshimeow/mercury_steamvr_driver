@@ -124,19 +124,25 @@ void MercuryHandDevice::UpdateFingerPose(const xrt_hand_joint_set *joint_set)
 
 void MercuryHandDevice::UpdateWristPose(uint64_t timestamp)
 {
+    vr::DriverPose_t pose{};
+    pose.qDriverFromHeadRotation.w = 1;
+    pose.qWorldFromDriverRotation.w = 1;
+
+    pose.deviceIsConnected = true;
+    pose.poseTimeOffset = 0.0;
 
     //! @todo Fragile! Depends on hand_joint_set_default->hand_relation being identity.
     struct xrt_space_relation wrist_pose_in_global;
 
     enum m_relation_history_result result = m_relation_history_get(wrist_hist_, timestamp, &wrist_pose_in_global);
 
-    // Calculate a new fake controller pose
-    vr::DriverPose_t pose{};
-    pose.qDriverFromHeadRotation.w = 1;
-    pose.qWorldFromDriverRotation.w = 1;
-
-    pose.deviceIsConnected = true;
-    pose.poseTimeOffset = 0;
+    if (result == M_RELATION_HISTORY_RESULT_PREDICTED)
+    {
+        DriverLog("bAD!!!!! PREDICTED!!!");
+        pose.result = vr::TrackingResult_Running_OutOfRange;
+        pose.poseIsValid = false;
+        goto update;
+    }
 
     if (result == M_RELATION_HISTORY_RESULT_INVALID)
     {
@@ -167,6 +173,14 @@ void MercuryHandDevice::UpdateWristPose(uint64_t timestamp)
     pose.vecPosition[0] = wrist_pose_in_global.pose.position.x;
     pose.vecPosition[1] = wrist_pose_in_global.pose.position.y;
     pose.vecPosition[2] = wrist_pose_in_global.pose.position.z;
+
+    // pose.vecAcceleration[0] = wrist_pose_in_global.linear_velocity.x;
+    // pose.vecAcceleration[1] = wrist_pose_in_global.linear_velocity.y;
+    // pose.vecAcceleration[2] = wrist_pose_in_global.linear_velocity.z;
+
+    // pose.vecAngularVelocity[0] = wrist_pose_in_global.angular_velocity.x;
+    // pose.vecAngularVelocity[1] = wrist_pose_in_global.angular_velocity.y;
+    // pose.vecAngularVelocity[2] = wrist_pose_in_global.angular_velocity.z;
 
     // DriverLog("%d %f %f %f", relhistget, pose.vecPosition[0], pose.vecPosition[1], pose.vecPosition[2]);
 

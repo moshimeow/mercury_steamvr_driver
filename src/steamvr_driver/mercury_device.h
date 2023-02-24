@@ -29,6 +29,8 @@ public:
 
     void UpdateWristPose (uint64_t timestamp);
 
+    // void Monster300HzThread();
+
     vr::DriverPose_t GetPose() override;
     std::string GetSerialNumber();
 

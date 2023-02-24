@@ -20,6 +20,21 @@
 
 namespace xat = xrt::auxiliary::tracking;
 
+void DeviceProvider::Monster300HzThread()
+{
+    while (is_active_)
+    {
+        uint64_t t = os_monotonic_get_ns();
+
+        t -= ht_delay_;
+
+        left_hand_->UpdateWristPose(t);
+        right_hand_->UpdateWristPose(t);
+
+        os_nanosleep(U_TIME_1MS_IN_NS*1);
+    }
+}
+
 vr::EVRInitError DeviceProvider::Init(vr::IVRDriverContext *pDriverContext)
 {
     VR_INIT_SERVER_DRIVER_CONTEXT(pDriverContext);
@@ -116,6 +131,7 @@ vr::EVRInitError DeviceProvider::Init(vr::IVRDriverContext *pDriverContext)
 
     is_active_ = true;
     hand_tracking_thread_ = std::thread(&DeviceProvider::HandTrackingThread, this);
+    monster_300hz_thread_ = std::thread(&DeviceProvider::Monster300HzThread, this);
 
     return vr::VRInitError_None;
 }
@@ -135,7 +151,7 @@ void hjs_from_tracking_message(const struct tracking_message_hand &msg, xrt_hand
         }
         return;
     }
-    
+
     for (int i = 0; i < XRT_HAND_JOINT_COUNT; i++)
     {
         set.values.hand_joint_set_default[i].relation.pose = msg.fingers_relative[i];
@@ -210,6 +226,10 @@ void DeviceProvider::HandTrackingThread()
             os_nanosleep(500 * U_TIME_1MS_IN_NS);
             continue;
         }
+
+        uint64_t now = os_monotonic_get_ns();
+
+
         xrt_hand_joint_set hands[2] = {};
 
         hjs_from_tracking_message(message.hands[0], hands[0]);
@@ -223,8 +243,15 @@ void DeviceProvider::HandTrackingThread()
         wrists[0] = handle_wrist_pose(message.hands[0]);
         wrists[1] = handle_wrist_pose(message.hands[1]);
 
-        m_relation_history_push(left_hand_->wrist_hist_, &wrists[0], message.timestamp);
-        m_relation_history_push(right_hand_->wrist_hist_, &wrists[1], message.timestamp);
+
+
+        m_relation_history_push(left_hand_->wrist_hist_, &wrists[0], message.camera_timestamp);
+        m_relation_history_push(right_hand_->wrist_hist_, &wrists[1], message.camera_timestamp);
+
+
+        timestamps_debug_ << std::to_string(message.camera_timestamp) <<", " << std::to_string(message.sent_at_timestamp) << ", " << std::to_string(os_monotonic_get_ns()) << std::endl;
+
+        timestamps_debug_.flush();
     }
 }
 
@@ -235,12 +262,12 @@ const char *const *DeviceProvider::GetInterfaceVersions()
 
 void DeviceProvider::RunFrame()
 {
-    uint64_t t = os_monotonic_get_ns();
+    // uint64_t t = os_monotonic_get_ns();
 
-    t -= U_TIME_1MS_IN_NS * 40;
+    // t -= U_TIME_1MS_IN_NS * 40;
 
-    left_hand_->UpdateWristPose(t);
-    right_hand_->UpdateWristPose(t);
+    // left_hand_->UpdateWristPose(t);
+    // right_hand_->UpdateWristPose(t);
 }
 
 // todo: what do we want to do here?

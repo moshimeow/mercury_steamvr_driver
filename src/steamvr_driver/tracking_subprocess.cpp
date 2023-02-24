@@ -337,7 +337,7 @@ int main(int argc, char **argv)
         }
 
         //!@todo
-        double time_now = os_monotonic_get_ns();
+        double time_now = (double)os_monotonic_get_ns();
         double time_camera = state.cap.get(cv::CAP_PROP_POS_MSEC) * 1e6;
 
         double time_ratio = time_now / time_camera;
@@ -385,13 +385,15 @@ int main(int argc, char **argv)
         tracking_message message = {};
 
         message.size = TMSIZE;
-        message.timestamp = time_camera;
+        message.camera_timestamp = time_camera;
         hjs_to_tracking_message(state, hands[0], attached_hmd_pose, message.hands[0]);
         hjs_to_tracking_message(state, hands[1], attached_hmd_pose, message.hands[1]);
 
         // Send data to the parent process
         // char *sendBuffer = ;
         meow_printf("Going to send!");
+
+        message.sent_at_timestamp = os_monotonic_get_ns();
         iResult = send(state.connectSocket, (const char *)&message, TMSIZE, 0);
         if (iResult == SOCKET_ERROR)
         {
