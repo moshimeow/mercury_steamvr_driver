@@ -48,6 +48,7 @@ target_link_libraries(
         ${OpenCV_LIBRARIES}
         xrt-interfaces
         aux_vive
+        aux_math
         t_ht_mercury # XXX meowses, 8/27: this results in link failure? Really shouldn't... 
         meow_oxr_sdl2
         meow_util

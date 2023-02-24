@@ -17,6 +17,7 @@ struct tracking_message
 {
     size_t size;
     int64_t camera_timestamp;
+    int64_t host_recieved_frame_timestamp;
     int64_t sent_at_timestamp;
     tracking_message_hand hands[2];
 };

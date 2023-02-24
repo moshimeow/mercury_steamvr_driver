@@ -1,3 +1,6 @@
+// This needs to be first or else ...windows.h? winsock2? includes in u_template_historybuf will cause sadness.
+#include "device_provider.h"
+
 #include <iostream>
 #include <string>
 #include <winsock2.h>
@@ -6,7 +9,6 @@
 // WinSock2
 #pragma comment(lib, "ws2_32.lib")
 
-#include "device_provider.h"
 #include "util/path_utils.h"
 #include "driver_log.h"
 #include "vive/vive_config.h"
@@ -24,14 +26,14 @@ void DeviceProvider::Monster300HzThread()
 {
     while (is_active_)
     {
-        uint64_t t = os_monotonic_get_ns();
+        int64_t t = os_monotonic_get_ns();
 
-        t -= ht_delay_;
+        t -= (int64_t)ht_delay_;
 
         left_hand_->UpdateWristPose(t);
         right_hand_->UpdateWristPose(t);
 
-        os_nanosleep(U_TIME_1MS_IN_NS*1);
+        os_nanosleep(U_TIME_1MS_IN_NS * 1);
     }
 }
 
@@ -128,6 +130,16 @@ vr::EVRInitError DeviceProvider::Init(vr::IVRDriverContext *pDriverContext)
     vr::VRServerDriverHost()->TrackedDeviceAdded(right_hand_->GetSerialNumber().c_str(),
                                                  vr::TrackedDeviceClass_Controller,
                                                  right_hand_.get());
+
+    // #define M_EURO_FILTER_HEAD_TRACKING_FCMIN 30.0
+    // #define M_EURO_FILTER_HEAD_TRACKING_FCMIN_D 25.0
+    // #define M_EURO_FILTER_HEAD_TRACKING_BETA 0.6
+
+    // m_filter_euro_f32_init(&delay_filter_, 3.14, 1, 0.16);
+    // m_filter_euro_f32_init(&delay_filter_, 30*500000, 25*500000, 0.6);
+    // m_filter_euro_f32_init(&delay_filter_, 0.00000001, 0.00000001, 0.01);
+    // m_filter_euro_f32_init(&delay_filter_, 0.00000001, 0.00000001, 0.0001);
+    m_filter_euro_f32_init(&delay_filter_, 0.000000001, 0.000000001, 0.0001);
 
     is_active_ = true;
     hand_tracking_thread_ = std::thread(&DeviceProvider::HandTrackingThread, this);
@@ -229,7 +241,6 @@ void DeviceProvider::HandTrackingThread()
 
         uint64_t now = os_monotonic_get_ns();
 
-
         xrt_hand_joint_set hands[2] = {};
 
         hjs_from_tracking_message(message.hands[0], hands[0]);
@@ -243,15 +254,45 @@ void DeviceProvider::HandTrackingThread()
         wrists[0] = handle_wrist_pose(message.hands[0]);
         wrists[1] = handle_wrist_pose(message.hands[1]);
 
+        int64_t max_delay = 0;
+        for (int i = 0; i < prev_delays_.size(); i++)
+        {
+            max_delay = std::max(max_delay, *prev_delays_.get_at_age(i));
+        }
 
+        int64_t delay = now - message.camera_timestamp;
+
+        if (message.hands[0].tracked || message.hands[1].tracked)
+        {
+
+            prev_delays_.push_back(delay);
+
+            // 1 frametime so that we always have a frame to interpolate extra with
+            max_delay += float(U_TIME_1S_IN_NS * 1) / (54.0f);
+
+            // [HACK] Extra time because I feel like it.
+            // This should be fixed by tuning the euro filter to go *up* faster.
+            max_delay += U_TIME_1MS_IN_NS * 10;
+
+            float delay_f = max_delay;
+
+            m_filter_euro_f32_run(&delay_filter_, message.camera_timestamp, &delay_f, &ht_delay_);
+        }
 
         m_relation_history_push(left_hand_->wrist_hist_, &wrists[0], message.camera_timestamp);
         m_relation_history_push(right_hand_->wrist_hist_, &wrists[1], message.camera_timestamp);
 
-
-        timestamps_debug_ << std::to_string(message.camera_timestamp) <<", " << std::to_string(message.sent_at_timestamp) << ", " << std::to_string(os_monotonic_get_ns()) << std::endl;
+#ifdef TIMING_DEBUGGING
+        timestamps_debug_ << std::to_string(message.camera_timestamp) << ", "
+                          << std::to_string(message.host_recieved_frame_timestamp) << ", "
+                          << std::to_string(message.sent_at_timestamp) << ", "
+                          << std::to_string(now) << ", "
+                          << std::to_string(delay) << ", "
+                          << std::to_string(max_delay) << ", "
+                          << std::to_string(ht_delay_) << std::endl;
 
         timestamps_debug_.flush();
+#endif
     }
 }
 
@@ -262,12 +303,6 @@ const char *const *DeviceProvider::GetInterfaceVersions()
 
 void DeviceProvider::RunFrame()
 {
-    // uint64_t t = os_monotonic_get_ns();
-
-    // t -= U_TIME_1MS_IN_NS * 40;
-
-    // left_hand_->UpdateWristPose(t);
-    // right_hand_->UpdateWristPose(t);
 }
 
 // todo: what do we want to do here?

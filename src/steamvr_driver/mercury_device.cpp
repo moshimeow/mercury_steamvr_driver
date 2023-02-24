@@ -2,6 +2,7 @@
 
 #include "driver_log.h"
 #include "math/m_relation_history.h"
+#include "os/os_time.h"
 
 MercuryHandDevice::MercuryHandDevice(vr::ETrackedControllerRole role) : role_(role)
 {
@@ -107,7 +108,14 @@ void convert_vec3(const T &p_quatA, U &p_quatB)
 void MercuryHandDevice::UpdateFingerPose(const xrt_hand_joint_set *joint_set)
 {
     if (!this->has_activated_)
+    {
         return;
+    }
+
+    if (!joint_set->is_active)
+    {
+        return;
+    }
 
     // Gets the finger poses relative to... the "root"
     // It's constantly up for debate what "the root" actually is
@@ -138,10 +146,17 @@ void MercuryHandDevice::UpdateWristPose(uint64_t timestamp)
 
     if (result == M_RELATION_HISTORY_RESULT_PREDICTED)
     {
-        DriverLog("bAD!!!!! PREDICTED!!!");
-        pose.result = vr::TrackingResult_Running_OutOfRange;
-        pose.poseIsValid = false;
-        goto update;
+        static int64_t now = os_monotonic_get_ns();
+        if (now - last_time_printed_predicted_message_ > U_TIME_1MS_IN_NS * 50)
+        {
+            DriverLog("Predicted this pose! Shouldn't happen!");
+        }
+
+        last_time_printed_predicted_message_ = now;
+
+        // pose.result = vr::TrackingResult_Running_OutOfRange;
+        // pose.poseIsValid = false;
+        // goto update;
     }
 
     if (result == M_RELATION_HISTORY_RESULT_INVALID)

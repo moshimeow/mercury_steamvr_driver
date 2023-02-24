@@ -51,5 +51,7 @@ private:
 
     std::atomic<bool> has_activated_;
 
+    int64_t last_time_printed_predicted_message_ = 0;
+
 
 };

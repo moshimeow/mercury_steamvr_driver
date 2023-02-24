@@ -1,17 +1,20 @@
 #pragma once
 
+#include "math/m_filter_one_euro.h"
+#include "util/u_template_historybuf.hpp"
+#include "util/u_time.h"
+
+#include "mercury_device.h"
+#include "openvr_driver.h"
+
+#include <iostream>
+#include <fstream>
 #include <memory>
 #include <atomic>
 #include <thread>
 #include <winsock2.h>
 
-#include "openvr_driver.h"
-
-#include "mercury_device.h"
-#include "math/m_filter_one_euro.h"
-#include "util/u_time.h"
-#include <iostream>
-#include <fstream>
+#undef TIMING_DEBUGGING
 
 class DeviceProvider : public vr::IServerTrackedDeviceProvider {
 public:
@@ -45,14 +48,15 @@ private:
     std::unique_ptr<MercuryHandDevice> left_hand_;
     std::unique_ptr<MercuryHandDevice> right_hand_;
 
-    uint64_t ht_delay_ = U_TIME_1MS_IN_NS * 100;
+    float ht_delay_ = U_TIME_1MS_IN_NS * 55;
 
-    m_filter_euro_f32 *filter;
+    m_filter_euro_f32 delay_filter_;
+
+    xrt::auxiliary::util::HistoryBuffer<int64_t, 25> prev_delays_;
 
     // struct m_relation_history *relation_hist[2];
 
-
+#ifdef TIMING_DEBUGGING
     std::ofstream timestamps_debug_ = std::ofstream("C:\\dev\\timestamps.csv");
-    
-    void* sdl2_hack = NULL;
+#endif
 };
