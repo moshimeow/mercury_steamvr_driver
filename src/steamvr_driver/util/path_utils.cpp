@@ -94,7 +94,7 @@ bool GetSubprocessPath(std::string &out_path) {
     out_path = res + R"(\bin\win64\tracking_subprocess.exe)";
     DriverLog("Meow %s", out_path.c_str());
 
-
+    return true;
 }
 
 bool GetHandTrackingModelsPath(std::string &out_path) {
