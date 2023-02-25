@@ -82,3 +82,11 @@ DeviceProvider::HandTrackingThread
 without pretending to be index controllers:
 the hand's forward axis seems to be my wrist's +Z, so totally backwards. the thumb seems to be closer, when my back of my hand is facing me/the camera, and the palms are both facing out. 
 with pretending to be index controllers: literally no difference afaict
+
+
+
+Remember, we really can't supply more than one pose. 
+
+When you call
+    vr::VRServerDriverHost()->TrackedDevicePoseUpdated(device_id_, pose, sizeof(vr::DriverPose_t));
+that goes straight to /pose/raw and there's nothing you can do about it.
