@@ -27,8 +27,32 @@
 #include "u_subprocess_logging.h"
 
 #include "pinch_decider.hpp"
+#include "math/m_filter_one_euro.h"
 
 #define meow_printf U_SP_LOG_E
+
+// #define FCMIN 30.0
+// #define FCMIN_D 25.0
+// #define OUR_BETA 0.6
+
+#define FCMIN 10.0
+#define FCMIN_D 9.0
+#define OUR_BETA 0.00006
+
+// #define FCMIN_QUAT 30.0*20000.5
+// #define FCMIN_D_QUAT 25.0*20000.5
+
+// #define FCMIN_QUAT 0.6
+// #define FCMIN_D_QUAT 0.55
+// #define OUR_BETA_QUAT 0.000006
+
+// #define FCMIN_QUAT 0.6
+// #define FCMIN_D_QUAT 0.55
+// #define OUR_BETA_QUAT 0.000006
+
+#define FCMIN_QUAT 1.6
+#define FCMIN_D_QUAT 1.5
+#define OUR_BETA_QUAT 0.000006
 
 namespace xat = xrt::auxiliary::tracking;
 
@@ -48,6 +72,11 @@ struct subprocess_state
 
     struct t_hand_tracking_sync *sync = nullptr;
 
+    // Left wrist, left indpxm, right wrist, right indpxm, head.
+    // struct m_filter_euro_vec3 filters[3];
+    struct m_filter_euro_vec3 vector_filters[2];
+    struct m_filter_euro_quat quat_filters[2];
+
     bool pinch[2] = {false, false};
 };
 
@@ -66,6 +95,8 @@ std::string read_file(std::string_view path)
     out.append(buf, 0, stream.gcount());
     return out;
 }
+
+// void reinit_filters(subprocess_state &state)
 
 bool setup_camera_and_ht(subprocess_state &state)
 {
@@ -148,6 +179,13 @@ bool setup_camera_and_ht(subprocess_state &state)
     state.cap.set(cv::CAP_PROP_MODE, cv::VideoWriter::fourcc('Y', 'U', 'Y', 'V'));
     state.cap.set(cv::CAP_PROP_FPS, 54.0);
 
+    // // Suggestions. These are suitable for head tracking.
+
+    for (int i = 0; i < 2; i++)
+    {
+        m_filter_euro_vec3_init(&state.vector_filters[i], FCMIN, FCMIN_D, OUR_BETA);
+        m_filter_euro_quat_init(&state.quat_filters[i], FCMIN_QUAT, FCMIN_D_QUAT, OUR_BETA_QUAT);
+    }
     return true;
 }
 
@@ -168,7 +206,7 @@ xrt_pose GetPose(const vr::HmdMatrix34_t &matrix)
     return {q, v};
 }
 
-void hjs2_to_tracking_message(subprocess_state &state, xrt_hand_joint_set sets[2], xrt_pose attached_head, struct tracking_message &msg)
+void hjs2_to_tracking_message(subprocess_state &state, xrt_hand_joint_set sets[2], xrt_pose attached_head, struct tracking_message &msg, int64_t tracking_ts)
 {
     bool tracked[2] = {false, false};
     xrt_pose wrist_global[2] = {};
@@ -182,6 +220,10 @@ void hjs2_to_tracking_message(subprocess_state &state, xrt_hand_joint_set sets[2
         tracked[hand_idx] = set.is_active;
         if (!msg.hands[hand_idx].tracked)
         {
+            state.vector_filters[hand_idx].base.have_prev_y = false;
+            state.quat_filters[hand_idx].base.have_prev_y = false;
+            // m_filter_euro_vec3_init(&state.vector_filters[hand_idx], FCMIN, FCMIN_D, OUR_BETA);
+            // m_filter_euro_quat_init(&state.quat_filters[hand_idx], FCMIN_QUAT, FCMIN_D_QUAT, OUR_BETA_QUAT);
             continue;
         }
 
@@ -226,7 +268,45 @@ void hjs2_to_tracking_message(subprocess_state &state, xrt_hand_joint_set sets[2
         }
         xrt_hand_joint_set &set = sets[hand_idx];
 
-        xrt_pose ap = aim_pose(hand_idx, wrist_global[hand_idx], index_pxm_global[hand_idx], tracked[!hand_idx] ? &wrist_global[!hand_idx] : NULL, attached_head);
+        xrt_pose ap_ = aim_pose(hand_idx, wrist_global[hand_idx], index_pxm_global[hand_idx], tracked[!hand_idx] ? &wrist_global[!hand_idx] : NULL, attached_head);
+
+        xrt_pose ap;
+
+        if (msg.hands[hand_idx].trigger)
+        {
+            // Too low
+            // const float mul = 0.000001;
+
+            // Also too low
+            // const float mul = 0.0001;
+
+            // Also too low - these all feel the same and result in ~no movement
+            // const float mul = 0.001;
+
+            // This does result in some movement
+            // const float mul = 0.01;
+
+            // OK this is good and feels purposeful and generally helps interactions
+            const float mul = 0.05;
+
+            state.quat_filters[hand_idx].base.fc_min = FCMIN_QUAT * mul;
+            state.quat_filters[hand_idx].base.fc_min_d = FCMIN_D_QUAT * mul;
+
+            state.vector_filters[hand_idx].base.fc_min = FCMIN * mul;
+            state.vector_filters[hand_idx].base.fc_min_d = FCMIN_D * mul;
+        }
+        else
+        {
+            state.quat_filters[hand_idx].base.fc_min = FCMIN_QUAT;
+            state.quat_filters[hand_idx].base.fc_min_d = FCMIN_D_QUAT;
+
+            state.vector_filters[hand_idx].base.fc_min = FCMIN;
+            state.vector_filters[hand_idx].base.fc_min_d = FCMIN_D;
+        }
+
+        m_filter_euro_quat_run(&state.quat_filters[hand_idx], tracking_ts, &ap_.orientation, &ap.orientation);
+        m_filter_euro_vec3_run(&state.vector_filters[hand_idx], tracking_ts, &ap_.position, &ap.position);
+
         msg.hands[hand_idx].pose_raw = ap;
         msg.hands[hand_idx].wrist = wrist_global[hand_idx];
         for (int i = 0; i < XRT_HAND_JOINT_COUNT; i++)
@@ -433,7 +513,7 @@ int main(int argc, char **argv)
         message.camera_timestamp = time_camera;
         message.host_recieved_frame_timestamp = time_now_uint;
 
-        hjs2_to_tracking_message(state, hands, attached_hmd_pose, message);
+        hjs2_to_tracking_message(state, hands, attached_hmd_pose, message, time_camera);
         // hjs_to_tracking_message(state, 0, hands[0], attached_hmd_pose, message.hands[0]);
         // hjs_to_tracking_message(state, 1, hands[1], attached_hmd_pose, message.hands[1]);
 
