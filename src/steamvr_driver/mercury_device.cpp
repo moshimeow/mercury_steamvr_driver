@@ -199,15 +199,6 @@ void MercuryHandDevice::UpdateWristPose(uint64_t timestamp)
     pose.vecPosition[1] = wrist_pose_in_global.pose.position.y;
     pose.vecPosition[2] = wrist_pose_in_global.pose.position.z;
 
-    // pose.vecAcceleration[0] = wrist_pose_in_global.linear_velocity.x;
-    // pose.vecAcceleration[1] = wrist_pose_in_global.linear_velocity.y;
-    // pose.vecAcceleration[2] = wrist_pose_in_global.linear_velocity.z;
-
-    // pose.vecAngularVelocity[0] = wrist_pose_in_global.angular_velocity.x;
-    // pose.vecAngularVelocity[1] = wrist_pose_in_global.angular_velocity.y;
-    // pose.vecAngularVelocity[2] = wrist_pose_in_global.angular_velocity.z;
-
-    // DriverLog("%d %f %f %f", relhistget, pose.vecPosition[0], pose.vecPosition[1], pose.vecPosition[2]);
 
     convert_quaternion(wrist_pose_in_global.pose.orientation, pose.qRotation);
 
