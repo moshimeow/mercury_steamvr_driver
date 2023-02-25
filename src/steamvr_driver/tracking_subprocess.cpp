@@ -37,7 +37,8 @@
 
 #define FCMIN 10.0
 #define FCMIN_D 9.0
-#define OUR_BETA 0.00006
+#define OUR_BETA 3.0
+#define OUR_BETA_PINCHED 0.5
 
 // #define FCMIN_QUAT 30.0*20000.5
 // #define FCMIN_D_QUAT 25.0*20000.5
@@ -52,7 +53,8 @@
 
 #define FCMIN_QUAT 1.6
 #define FCMIN_D_QUAT 1.5
-#define OUR_BETA_QUAT 0.000006
+#define OUR_BETA_QUAT 3.0
+#define OUR_BETA_PINCHED_QUAT 0.2
 
 namespace xat = xrt::auxiliary::tracking;
 
@@ -291,9 +293,11 @@ void hjs2_to_tracking_message(subprocess_state &state, xrt_hand_joint_set sets[2
 
             state.quat_filters[hand_idx].base.fc_min = FCMIN_QUAT * mul;
             state.quat_filters[hand_idx].base.fc_min_d = FCMIN_D_QUAT * mul;
+            state.quat_filters[hand_idx].base.beta = OUR_BETA_PINCHED_QUAT;
 
             state.vector_filters[hand_idx].base.fc_min = FCMIN * mul;
             state.vector_filters[hand_idx].base.fc_min_d = FCMIN_D * mul;
+            state.quat_filters[hand_idx].base.beta = OUR_BETA_PINCHED;
         }
         else
         {
