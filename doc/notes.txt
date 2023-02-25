@@ -90,3 +90,8 @@ Remember, we really can't supply more than one pose.
 When you call
     vr::VRServerDriverHost()->TrackedDevicePoseUpdated(device_id_, pose, sizeof(vr::DriverPose_t));
 that goes straight to /pose/raw and there's nothing you can do about it.
+
+
+If you want to euro-filter the aim pose:
+
+It's probably fine to update the hand skeleton at say 500Hz, in the same loop as updating /pose/raw
