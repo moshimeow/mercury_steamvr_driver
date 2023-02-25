@@ -83,8 +83,8 @@
         },
         "tip": {
             "component_local" : {
-                "origin": [-0.006, -0.015, 0.02],
-                "rotate_xyz" : [-40.0, 5.0, 0.0]
+                "origin": [0.0, 0.0, 0.0],
+                "rotate_xyz" : [0.0, 0.0, 0.0]
             }
         },
         "base": {
