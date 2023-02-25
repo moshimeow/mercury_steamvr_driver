@@ -37,6 +37,71 @@ void DeviceProvider::Monster300HzThread()
     }
 }
 
+bool DeviceProvider::StartSubprocess()
+{
+    // Start the subprocess with the local address and port as arguments
+    STARTUPINFO startupInfo;
+    PROCESS_INFORMATION processInfo;
+    ZeroMemory(&startupInfo, sizeof(startupInfo));
+    ZeroMemory(&processInfo, sizeof(processInfo));
+    startupInfo.cb = sizeof(startupInfo);
+
+    // maybe this is bad?
+    // startupInfo.wShowWindow = true;
+
+    std::string subprocessPath = {};
+    GetSubprocessPath(subprocessPath);
+    std::string commandLine = subprocessPath + " " + std::to_string(ntohs(localAddr.sin_port)) + " " + hmd_config;
+    std::wstring wideCommandLine(commandLine.begin(), commandLine.end());
+    DriverLog("Creating subprocess %s!", commandLine.c_str());
+    if (!CreateProcess(NULL, commandLine.data(), NULL, NULL, FALSE, 0, NULL, NULL, &startupInfo, &processInfo))
+    {
+        DriverLog("Error creating subprocess %s:  %d", commandLine.c_str(), WSAGetLastError());
+        closesocket(listenSocket);
+        WSACleanup();
+        return false;
+    }
+    return true;
+}
+
+bool DeviceProvider::SetupListen()
+{
+    DriverLog("Server: Listening!\n");
+
+    // Listen for the subprocess to connect
+    int iResult = listen(listenSocket, SOMAXCONN);
+    if (iResult == SOCKET_ERROR)
+    {
+        DriverLog("Error listening for connection: %d", WSAGetLastError());
+        closesocket(listenSocket);
+        WSACleanup();
+        return false;
+    }
+    DriverLog("Server: Accepting connection!\n");
+
+    // Accept the connection
+    clientSocket = accept(listenSocket, NULL, NULL);
+    if (clientSocket == INVALID_SOCKET)
+    {
+        DriverLog("Error accepting connection: %d", WSAGetLastError());
+        closesocket(listenSocket);
+        WSACleanup();
+        return false;
+    }
+
+    // int timeout = 2000;
+    // int result = setsockopt(clientSocket, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout, sizeof(timeout));
+    // if (result == SOCKET_ERROR)
+    // {
+    //     std::cerr << "setsockopt failed: " << WSAGetLastError() << std::endl;
+    //     closesocket(clientSocket);
+    //     WSACleanup();
+    //     return false;
+    // }
+
+    return true;
+}
+
 vr::EVRInitError DeviceProvider::Init(vr::IVRDriverContext *pDriverContext)
 {
     VR_INIT_SERVER_DRIVER_CONTEXT(pDriverContext);
@@ -44,7 +109,7 @@ vr::EVRInitError DeviceProvider::Init(vr::IVRDriverContext *pDriverContext)
     InitDriverLog(vr::VRDriverLog());
 
     // initialise hand tracking
-    std::string hmd_config;
+    // std::string hmd_config;
     if (!GetHMDConfigPath(hmd_config))
     {
         DriverLog("Failed to find HMD config. Exiting.");
@@ -84,7 +149,7 @@ vr::EVRInitError DeviceProvider::Init(vr::IVRDriverContext *pDriverContext)
     }
 
     // Get the local address and port of the socket
-    sockaddr_in localAddr;
+    // sockaddr_in localAddr;
     int localAddrLen = sizeof(localAddr);
     iResult = getsockname(listenSocket, (sockaddr *)&localAddr, &localAddrLen);
     if (iResult == SOCKET_ERROR)
@@ -95,26 +160,8 @@ vr::EVRInitError DeviceProvider::Init(vr::IVRDriverContext *pDriverContext)
         return vr::VRInitError_Driver_Failed;
     }
 
-    // Start the subprocess with the local address and port as arguments
-    STARTUPINFO startupInfo;
-    PROCESS_INFORMATION processInfo;
-    ZeroMemory(&startupInfo, sizeof(startupInfo));
-    ZeroMemory(&processInfo, sizeof(processInfo));
-    startupInfo.cb = sizeof(startupInfo);
-
-    // maybe this is bad?
-    // startupInfo.wShowWindow = true;
-
-    std::string subprocessPath = {};
-    GetSubprocessPath(subprocessPath);
-    std::string commandLine = subprocessPath + " " + std::to_string(ntohs(localAddr.sin_port)) + " " + hmd_config;
-    std::wstring wideCommandLine(commandLine.begin(), commandLine.end());
-    DriverLog("Creating subprocess %s!", commandLine.c_str());
-    if (!CreateProcess(NULL, commandLine.data(), NULL, NULL, FALSE, 0, NULL, NULL, &startupInfo, &processInfo))
+    if (!StartSubprocess())
     {
-        DriverLog("Error creating subprocess %s:  %d", commandLine.c_str(), WSAGetLastError());
-        closesocket(listenSocket);
-        WSACleanup();
         return vr::VRInitError_Driver_Failed;
     }
 
@@ -203,30 +250,11 @@ xrt_space_relation handle_tip_pose(const struct tracking_message_hand &msg)
 
 void DeviceProvider::HandTrackingThread()
 {
-#if 1
-    DriverLog("Server: Listening!\n");
 
-    // Listen for the subprocess to connect
-    int iResult = listen(listenSocket, SOMAXCONN);
-    if (iResult == SOCKET_ERROR)
+    if (!SetupListen())
     {
-        DriverLog("Error listening for connection: %d", WSAGetLastError());
-        closesocket(listenSocket);
-        WSACleanup();
         return;
     }
-    DriverLog("Server: Accepting connection!\n");
-
-    // Accept the connection
-    clientSocket = accept(listenSocket, NULL, NULL);
-    if (clientSocket == INVALID_SOCKET)
-    {
-        DriverLog("Error accepting connection: %d", WSAGetLastError());
-        closesocket(listenSocket);
-        WSACleanup();
-        return;
-    }
-#endif
 
     DriverLog("HandTrackingThread!");
 
@@ -239,11 +267,31 @@ void DeviceProvider::HandTrackingThread()
         // DriverLog("Received! Result: %d", iResult);
         if (iResult == SOCKET_ERROR)
         {
-            DriverLog("Error receiving data: %d", WSAGetLastError());
-            closesocket(clientSocket);
-            closesocket(listenSocket);
-            WSACleanup();
-            return;
+            int last_error = WSAGetLastError();
+            // if (WSAGetLastError() == WSAETIMEDOUT)
+            // {
+            //     DriverLog("recv timed out! The subprocess was probably killed by you because you're compile-edit-debugging!");
+            //     break;
+            // }
+            if (WSAGetLastError() == WSAECONNRESET && TRY_RESTART)
+            {
+                if (!StartSubprocess())
+                {
+                    return;
+                }
+                if (!SetupListen())
+                {
+                    return;
+                }
+            }
+            else
+            {
+                DriverLog("Error receiving data: %d", WSAGetLastError());
+                closesocket(clientSocket);
+                closesocket(listenSocket);
+                WSACleanup();
+                return;
+            }
         }
 
         if (iResult != TMSIZE)
@@ -253,6 +301,11 @@ void DeviceProvider::HandTrackingThread()
             os_nanosleep(500 * U_TIME_1MS_IN_NS);
             continue;
         }
+
+        // if (message.is_just_keepalive)
+        // {
+        //     continue;
+        // }
 
         uint64_t now = os_monotonic_get_ns();
 

@@ -15,6 +15,9 @@
 #include <winsock2.h>
 
 #undef TIMING_DEBUGGING
+#define TRY_RESTART 1
+
+#define SUBPROCESS_STOP_START
 
 class DeviceProvider : public vr::IServerTrackedDeviceProvider {
 public:
@@ -36,10 +39,16 @@ public:
 
 private:
 
+    bool StartSubprocess();
+    bool SetupListen();
+
     void HandTrackingThread();
 
     SOCKET clientSocket;
     SOCKET listenSocket;
+
+    // SOCKET restarterListenSocket;
+    // SOCKET restarterClientSocket;
 
     std::atomic<bool> is_active_;
     std::thread hand_tracking_thread_;
@@ -53,6 +62,10 @@ private:
     m_filter_euro_f32 delay_filter_;
 
     xrt::auxiliary::util::HistoryBuffer<int64_t, 25> prev_delays_;
+
+    sockaddr_in localAddr;
+    std::string hmd_config;
+
 
     // struct m_relation_history *relation_hist[2];
 

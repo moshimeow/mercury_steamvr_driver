@@ -91,7 +91,8 @@ bool GetSubprocessPath(std::string &out_path) {
     }
     DriverLog("Meow %s", res.c_str());
 
-    out_path = res + R"(\bin\win64\tracking_subprocess.exe)";
+    out_path = res + R"(\bin\win64\tracking_subprocess_copy.exe)";
+    // out_path = res + R"(\bin\win64\tracking_subprocess.exe)";
     DriverLog("Meow %s", out_path.c_str());
 
     return true;

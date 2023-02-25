@@ -95,3 +95,53 @@ that goes straight to /pose/raw and there's nothing you can do about it.
 If you want to euro-filter the aim pose:
 
 It's probably fine to update the hand skeleton at say 500Hz, in the same loop as updating /pose/raw
+
+
+
+
+
+```
+#include <windows.h>
+#include <tlhelp32.h>
+#include <string>
+
+
+
+// void kill_processes(const std::wstring &name)
+// {
+//     // Create a snapshot of the running processes
+//     HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+//     if (snapshot == INVALID_HANDLE_VALUE)
+//     {
+//         // Error: Failed to create snapshot
+//         return;
+//     }
+
+//     // Initialize the process entry structure
+//     PROCESSENTRY32 entry;
+//     entry.dwSize = sizeof(PROCESSENTRY32);
+
+//     // Iterate over all processes in the snapshot
+//     if (Process32First(snapshot, &entry) == TRUE)
+//     {
+//         do
+//         {
+//             // Check if the process name matches the target name
+//             if (_wcsicmp(entry.szExeFile, name.c_str()) == 0)
+//             {
+//                 // Open a handle to the process with the PROCESS_TERMINATE flag
+//                 HANDLE hProcess = OpenProcess(PROCESS_TERMINATE, FALSE, entry.th32ProcessID);
+//                 if (hProcess != NULL)
+//                 {
+//                     // Terminate the process with an exit code of 0
+//                     TerminateProcess(hProcess, 0);
+//                     CloseHandle(hProcess);
+//                 }
+//             }
+//         } while (Process32Next(snapshot, &entry) == TRUE);
+//     }
+
+//     // Close the snapshot handle
+//     CloseHandle(snapshot);
+// }
+```

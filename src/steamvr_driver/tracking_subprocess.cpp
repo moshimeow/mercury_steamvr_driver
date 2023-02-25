@@ -58,6 +58,15 @@
 
 namespace xat = xrt::auxiliary::tracking;
 
+struct emulated_buttons_state
+{
+    bool a = false;
+    bool b = false;
+    bool pinch = false;
+
+    float forward = 0;
+};
+
 struct subprocess_state
 {
     const char *port;
@@ -80,6 +89,7 @@ struct subprocess_state
     struct m_filter_euro_quat quat_filters[2];
 
     bool pinch[2] = {false, false};
+    struct emulated_buttons_state bs[2] = {};
 };
 
 std::string read_file(std::string_view path)
@@ -377,7 +387,7 @@ int main(int argc, char **argv)
     for (int i = 0; i < 100; i++)
     {
 
-        meow_printf("vriNIT!");
+        meow_printf("vriNIT! %s %s", state.port, state.vive_config_location);
 
         state.vr_system = vr::VR_Init(&error, vr::EVRApplicationType::VRApplication_Background);
 
@@ -526,10 +536,13 @@ int main(int argc, char **argv)
         meow_printf("Going to send!");
 
         message.sent_at_timestamp = os_monotonic_get_ns();
+
         iResult = send(state.connectSocket, (const char *)&message, TMSIZE, 0);
+
         if (iResult == SOCKET_ERROR)
         {
-            meow_printf("Error sending data: ", WSAGetLastError());
+            // WSAECONNABORTED = 10053 winerror.h
+            meow_printf("Error sending data: %d", WSAGetLastError());
             break;
         }
     }
