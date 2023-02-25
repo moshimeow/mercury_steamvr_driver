@@ -91,9 +91,12 @@ static xrt_pose aim_pose(int hand_idx, xrt_pose &wrist_primary, xrt_pose &index_
 
     xrt_vec3 shoulder = chest_center + face_right * (hand_idx == 1 ? 1.0f : -1.0f);
 
+
+    xrt_vec3 ray_start = m_vec3_mul_scalar(shoulder+wrist_primary.position, 0.5);
+
     xrt_vec3 ray_joint = index_pxm_primary.position;
 
-    struct xrt_vec3 ray_direction = shoulder - ray_joint;
+    struct xrt_vec3 ray_direction = ray_start - ray_joint;
 
     struct xrt_vec3 up = {0, 1, 0};
 
