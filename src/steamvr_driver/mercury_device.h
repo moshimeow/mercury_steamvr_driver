@@ -17,7 +17,7 @@ public:
 
     vr::EVRInitError Activate(uint32_t unObjectId) override;
 
-    void UpdateFingerPose(const xrt_hand_joint_set *joint_set);
+    void UpdateFingerPose(const xrt_hand_joint_set *joint_set_local, xrt_pose raw, xrt_pose wrist);
 
     void Deactivate() override;
 
@@ -36,6 +36,8 @@ public:
 
 
     struct m_relation_history *wrist_hist_;
+    struct m_relation_history *pose_raw_hist_;
+    
     xrt_hand_joint_set hand_joint_set_wrist_local;
     vr::VRBoneTransform_t bone_transforms_[OPENVR_BONE_COUNT];
     vr::ETrackedControllerRole role_;

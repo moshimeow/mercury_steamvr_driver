@@ -186,6 +186,21 @@ xrt_space_relation handle_wrist_pose(const struct tracking_message_hand &msg)
     return tmp;
 }
 
+xrt_space_relation handle_tip_pose(const struct tracking_message_hand &msg)
+{
+    xrt_space_relation tmp;
+
+    if (!msg.tracked)
+    {
+        tmp.relation_flags = XRT_SPACE_RELATION_BITMASK_NONE;
+        return tmp;
+    }
+    tmp.relation_flags = valid_flags_ht;
+
+    tmp.pose = msg.pose_raw;
+    return tmp;
+}
+
 void DeviceProvider::HandTrackingThread()
 {
 #if 1
@@ -246,13 +261,20 @@ void DeviceProvider::HandTrackingThread()
         hjs_from_tracking_message(message.hands[0], hands[0]);
         hjs_from_tracking_message(message.hands[1], hands[1]);
 
-        left_hand_->UpdateFingerPose(&hands[0]);
-        right_hand_->UpdateFingerPose(&hands[1]);
+        // left_hand_->UpdateFingerPose(&hands[0]);
+        // right_hand_->UpdateFingerPose(&hands[1]);
+
+        left_hand_->hand_joint_set_wrist_local = hands[0];
+        right_hand_->hand_joint_set_wrist_local = hands[1];
 
         xrt_space_relation wrists[2] = {};
+        xrt_space_relation tips[2] = {};
 
         wrists[0] = handle_wrist_pose(message.hands[0]);
         wrists[1] = handle_wrist_pose(message.hands[1]);
+
+        tips[0] = handle_tip_pose(message.hands[0]);
+        tips[1] = handle_tip_pose(message.hands[1]);
 
         int64_t max_delay = 0;
         for (int i = 0; i < prev_delays_.size(); i++)
@@ -281,6 +303,9 @@ void DeviceProvider::HandTrackingThread()
 
         m_relation_history_push(left_hand_->wrist_hist_, &wrists[0], message.camera_timestamp);
         m_relation_history_push(right_hand_->wrist_hist_, &wrists[1], message.camera_timestamp);
+
+        m_relation_history_push(left_hand_->pose_raw_hist_, &tips[0], message.camera_timestamp);
+        m_relation_history_push(right_hand_->pose_raw_hist_, &tips[1], message.camera_timestamp);
 
         left_hand_->UpdateFakeControllerInput(message.hands[0].trigger);
         right_hand_->UpdateFakeControllerInput(message.hands[1].trigger);

@@ -10,6 +10,7 @@ struct tracking_message_hand
 {
     bool tracked;
     bool trigger;
+    xrt_pose pose_raw;
     xrt_pose wrist;
     xrt_pose fingers_relative[26];
 };

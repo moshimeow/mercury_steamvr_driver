@@ -227,55 +227,18 @@ void hjs2_to_tracking_message(subprocess_state &state, xrt_hand_joint_set sets[2
         xrt_hand_joint_set &set = sets[hand_idx];
 
         xrt_pose ap = aim_pose(hand_idx, wrist_global[hand_idx], index_pxm_global[hand_idx], tracked[!hand_idx] ? &wrist_global[!hand_idx] : NULL, attached_head);
-        msg.hands[hand_idx].wrist = ap;
+        msg.hands[hand_idx].pose_raw = ap;
+        msg.hands[hand_idx].wrist = wrist_global[hand_idx];
         for (int i = 0; i < XRT_HAND_JOINT_COUNT; i++)
         {
             struct xrt_relation_chain xrc = {};
             xrt_space_relation tmp = {};
             m_relation_chain_push_relation(&xrc, &set.values.hand_joint_set_default[i].relation);
-            m_relation_chain_push_inverted_pose_if_not_identity(&xrc, &ap);
+            m_relation_chain_push_inverted_pose_if_not_identity(&xrc, &wrist_global[hand_idx]);
             m_relation_chain_resolve(&xrc, &tmp);
 
             msg.hands[hand_idx].fingers_relative[i] = tmp.pose;
         }
-    }
-}
-
-void hjs_to_tracking_message(subprocess_state &state, int hand_idx, xrt_hand_joint_set &set, xrt_pose attached_head, struct tracking_message_hand &msg)
-{
-    msg.tracked = set.is_active;
-    if (!msg.tracked)
-    {
-        return;
-    }
-
-    trigger_decide(set, &state.pinch[hand_idx]);
-
-    msg.trigger = state.pinch[hand_idx];
-
-    xrt_space_relation wrist = set.values.hand_joint_set_default[XRT_HAND_JOINT_WRIST].relation;
-
-    struct xrt_relation_chain xrc_wrist = {};
-    xrt_space_relation tmp = {};
-
-    m_relation_chain_push_relation(&xrc_wrist, &wrist);
-    // TODO ADD HEAD OFFSET HERE
-    m_relation_chain_push_pose(&xrc_wrist, &state.left_camera_in_head);
-    m_relation_chain_push_pose(&xrc_wrist, &attached_head);
-
-    m_relation_chain_resolve(&xrc_wrist, &tmp);
-
-    msg.wrist = tmp.pose;
-
-    for (int i = 0; i < XRT_HAND_JOINT_COUNT; i++)
-    {
-        struct xrt_relation_chain xrc = {};
-        xrt_space_relation tmp = {};
-        m_relation_chain_push_relation(&xrc, &set.values.hand_joint_set_default[i].relation);
-        m_relation_chain_push_inverted_relation(&xrc, &wrist);
-        m_relation_chain_resolve(&xrc, &tmp);
-
-        msg.fingers_relative[i] = tmp.pose;
     }
 }
 

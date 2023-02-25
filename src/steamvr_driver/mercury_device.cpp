@@ -7,11 +7,13 @@
 MercuryHandDevice::MercuryHandDevice(vr::ETrackedControllerRole role) : role_(role)
 {
     m_relation_history_create(&this->wrist_hist_);
+    m_relation_history_create(&this->pose_raw_hist_);
 }
 
 MercuryHandDevice::~MercuryHandDevice()
 {
     m_relation_history_destroy(&this->wrist_hist_);
+    m_relation_history_destroy(&this->pose_raw_hist_);
 }
 
 vr::EVRInitError MercuryHandDevice::Activate(uint32_t unObjectId)
@@ -110,21 +112,28 @@ void convert_vec3(const T &p_quatA, U &p_quatB)
 }
 
 // Updates the poses of the fake controllers as well as the finger poses
-void MercuryHandDevice::UpdateFingerPose(const xrt_hand_joint_set *joint_set)
+void MercuryHandDevice::UpdateFingerPose(const xrt_hand_joint_set *joint_set_local, xrt_pose raw, xrt_pose wrist)
 {
     if (!this->has_activated_)
     {
         return;
     }
 
-    if (!joint_set->is_active)
+    if (!joint_set_local->is_active)
     {
         return;
     }
 
+    struct xrt_relation_chain xrc = {};
+    struct xrt_space_relation tmp = {};
+
+    m_relation_chain_push_pose(&xrc, &wrist);
+    m_relation_chain_push_inverted_pose_if_not_identity(&xrc, &raw);
+    m_relation_chain_resolve(&xrc, &tmp);
+
     // Gets the finger poses relative to... the "root"
     // It's constantly up for debate what "the root" actually is
-    HandJointSetToBoneTransform(*joint_set, this->bone_transforms_, role_);
+    HandJointSetToBoneTransform(*joint_set_local, this->bone_transforms_, role_, tmp.pose);
 
     // Sets the finger poses
     //! @todo: do we really need to update it twice?
@@ -150,9 +159,11 @@ void MercuryHandDevice::UpdateWristPose(uint64_t timestamp)
     pose.poseTimeOffset = 0.0;
 
     //! @todo Fragile! Depends on hand_joint_set_default->hand_relation being identity.
+    struct xrt_space_relation raw_pose_in_global;
     struct xrt_space_relation wrist_pose_in_global;
 
-    enum m_relation_history_result result = m_relation_history_get(wrist_hist_, timestamp, &wrist_pose_in_global);
+    enum m_relation_history_result result = m_relation_history_get(pose_raw_hist_, timestamp, &raw_pose_in_global);
+    m_relation_history_get(wrist_hist_, timestamp, &wrist_pose_in_global); // enum m_relation_history_result result =
 
     if (result == M_RELATION_HISTORY_RESULT_PREDICTED)
     {
@@ -176,7 +187,7 @@ void MercuryHandDevice::UpdateWristPose(uint64_t timestamp)
         goto update;
     }
 
-    if (wrist_pose_in_global.relation_flags == XRT_SPACE_RELATION_BITMASK_NONE)
+    if (raw_pose_in_global.relation_flags == XRT_SPACE_RELATION_BITMASK_NONE)
     {
         pose.result = vr::TrackingResult_Running_OutOfRange;
         pose.poseIsValid = false;
@@ -195,15 +206,15 @@ void MercuryHandDevice::UpdateWristPose(uint64_t timestamp)
 
     pose.qWorldFromDriverRotation = {1, 0, 0, 0};
 
-    pose.vecPosition[0] = wrist_pose_in_global.pose.position.x;
-    pose.vecPosition[1] = wrist_pose_in_global.pose.position.y;
-    pose.vecPosition[2] = wrist_pose_in_global.pose.position.z;
+    pose.vecPosition[0] = raw_pose_in_global.pose.position.x;
+    pose.vecPosition[1] = raw_pose_in_global.pose.position.y;
+    pose.vecPosition[2] = raw_pose_in_global.pose.position.z;
 
-
-    convert_quaternion(wrist_pose_in_global.pose.orientation, pose.qRotation);
+    convert_quaternion(raw_pose_in_global.pose.orientation, pose.qRotation);
 
 // Update the fake controller pose
 update:
+    UpdateFingerPose(&this->hand_joint_set_wrist_local, raw_pose_in_global.pose, wrist_pose_in_global.pose);
     vr::VRServerDriverHost()->TrackedDevicePoseUpdated(device_id_, pose, sizeof(vr::DriverPose_t));
 }
 
