@@ -34,8 +34,8 @@ vr::EVRInitError MercuryHandDevice::Activate(uint32_t unObjectId)
     /*vr::VRProperties()->SetStringProperty(props, vr::Prop_RegisteredDeviceType_String,
                                            IsLeftHand() ? "collabora/mercury_hand_l"
                                                         : "collabora/mercury_hand_r");*/
-    vr::VRProperties()->SetStringProperty(props, vr::Prop_ResourceRoot_String, "indexcontroller");
-    vr::VRProperties()->SetStringProperty(props, vr::Prop_RenderModelName_String, !IsLeftHand() ? "{indexcontroller}valve_controller_knu_1_0_right" : "{indexcontroller}valve_controller_knu_1_0_left");
+    vr::VRProperties()->SetStringProperty(props, vr::Prop_ResourceRoot_String, "mercury");
+    vr::VRProperties()->SetStringProperty(props, vr::Prop_RenderModelName_String, !IsLeftHand() ? "{mercury}mercury_right" : "{mercury}mercury_left");
     vr::VRProperties()->SetStringProperty(props, vr::Prop_ControllerType_String, "knuckles");
     vr::VRProperties()->SetStringProperty(props, vr::Prop_ManufacturerName_String, "Valve");
     vr::VRProperties()->SetStringProperty(props, vr::Prop_TrackingSystemName_String, "yeet");
@@ -43,8 +43,8 @@ vr::EVRInitError MercuryHandDevice::Activate(uint32_t unObjectId)
     // we need to supply a controller profile so that bindings can work.
     // this path might be wrong. I checked the documentation though, and the docs say it is
     // using the right form.
-    vr::VRProperties()->SetStringProperty(props, vr::Prop_InputProfilePath_String, "{indexcontroller}/resources/input/index_controller_profile.json");
-    vr::VRProperties()->SetStringProperty(props, vr::Prop_RenderModelName_String, !IsLeftHand() ? "{indexcontroller}valve_controller_knu_1_0_right" : "{indexcontroller}valve_controller_knu_1_0_left");
+    vr::VRProperties()->SetStringProperty(props, vr::Prop_InputProfilePath_String, "{mercury}/resources/input/index_controller_profile.json");
+    // vr::VRProperties()->SetStringProperty(props, vr::Prop_RenderModelName_String, !IsLeftHand() ? "{mercury}valve_controller_knu_1_0_right" : "{mercury}valve_controller_knu_1_0_left");
 
     vr::VRDriverInput()->CreateSkeletonComponent(
         props,
@@ -137,6 +137,11 @@ void MercuryHandDevice::UpdateFingerPose(const xrt_hand_joint_set *joint_set)
 
 void MercuryHandDevice::UpdateWristPose(uint64_t timestamp)
 {
+    if (!this->has_activated_)
+    {
+        return;
+    }
+
     vr::DriverPose_t pose{};
     pose.qDriverFromHeadRotation.w = 1;
     pose.qWorldFromDriverRotation.w = 1;

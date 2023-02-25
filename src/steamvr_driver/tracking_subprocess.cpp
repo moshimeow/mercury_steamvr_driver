@@ -168,6 +168,79 @@ xrt_pose GetPose(const vr::HmdMatrix34_t &matrix)
     return {q, v};
 }
 
+void hjs2_to_tracking_message(subprocess_state &state, xrt_hand_joint_set sets[2], xrt_pose attached_head, struct tracking_message &msg)
+{
+    bool tracked[2] = {false, false};
+    xrt_pose wrist_global[2] = {};
+    xrt_pose index_pxm_global[2] = {};
+
+    for (int hand_idx = 0; hand_idx < 2; hand_idx++)
+    {
+        xrt_hand_joint_set &set = sets[hand_idx];
+
+        msg.hands[hand_idx].tracked = set.is_active;
+        tracked[hand_idx] = set.is_active;
+        if (!msg.hands[hand_idx].tracked)
+        {
+            continue;
+        }
+
+        trigger_decide(set, &state.pinch[hand_idx]);
+        msg.hands[hand_idx].trigger = state.pinch[hand_idx];
+
+        xrt_space_relation wrist = set.values.hand_joint_set_default[XRT_HAND_JOINT_WRIST].relation;
+        xrt_space_relation index_pxm = set.values.hand_joint_set_default[XRT_HAND_JOINT_INDEX_PROXIMAL].relation;
+
+        {
+            struct xrt_relation_chain xrc = {};
+            xrt_space_relation tmp = {};
+            m_relation_chain_push_relation(&xrc, &wrist);
+            // TODO ADD HEAD OFFSET HERE
+            m_relation_chain_push_pose(&xrc, &state.left_camera_in_head);
+            m_relation_chain_push_pose(&xrc, &attached_head);
+
+            m_relation_chain_resolve(&xrc, &tmp);
+
+            wrist_global[hand_idx] = tmp.pose;
+        }
+
+        {
+            struct xrt_relation_chain xrc = {};
+            xrt_space_relation tmp = {};
+            m_relation_chain_push_relation(&xrc, &index_pxm);
+            // TODO ADD HEAD OFFSET HERE
+            m_relation_chain_push_pose(&xrc, &state.left_camera_in_head);
+            m_relation_chain_push_pose(&xrc, &attached_head);
+
+            m_relation_chain_resolve(&xrc, &tmp);
+
+            index_pxm_global[hand_idx] = tmp.pose;
+        }
+    }
+
+    for (int hand_idx = 0; hand_idx < 2; hand_idx++)
+    {
+        if (!tracked[hand_idx])
+        {
+            continue;
+        }
+        xrt_hand_joint_set &set = sets[hand_idx];
+
+        xrt_pose ap = aim_pose(hand_idx, wrist_global[hand_idx], index_pxm_global[hand_idx], tracked[!hand_idx] ? &wrist_global[!hand_idx] : NULL, attached_head);
+        msg.hands[hand_idx].wrist = ap;
+        for (int i = 0; i < XRT_HAND_JOINT_COUNT; i++)
+        {
+            struct xrt_relation_chain xrc = {};
+            xrt_space_relation tmp = {};
+            m_relation_chain_push_relation(&xrc, &set.values.hand_joint_set_default[i].relation);
+            m_relation_chain_push_inverted_pose_if_not_identity(&xrc, &ap);
+            m_relation_chain_resolve(&xrc, &tmp);
+
+            msg.hands[hand_idx].fingers_relative[i] = tmp.pose;
+        }
+    }
+}
+
 void hjs_to_tracking_message(subprocess_state &state, int hand_idx, xrt_hand_joint_set &set, xrt_pose attached_head, struct tracking_message_hand &msg)
 {
     msg.tracked = set.is_active;
@@ -396,8 +469,10 @@ int main(int argc, char **argv)
         message.size = TMSIZE;
         message.camera_timestamp = time_camera;
         message.host_recieved_frame_timestamp = time_now_uint;
-        hjs_to_tracking_message(state, 0, hands[0], attached_hmd_pose, message.hands[0]);
-        hjs_to_tracking_message(state, 1, hands[1], attached_hmd_pose, message.hands[1]);
+
+        hjs2_to_tracking_message(state, hands, attached_hmd_pose, message);
+        // hjs_to_tracking_message(state, 0, hands[0], attached_hmd_pose, message.hands[0]);
+        // hjs_to_tracking_message(state, 1, hands[1], attached_hmd_pose, message.hands[1]);
 
         // Send data to the parent process
         // char *sendBuffer = ;

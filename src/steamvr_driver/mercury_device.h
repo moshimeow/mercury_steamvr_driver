@@ -50,7 +50,7 @@ public:
 private:
     bool IsLeftHand();
 
-    vr::TrackedDeviceIndex_t device_id_;
+    vr::TrackedDeviceIndex_t device_id_ = -1;
 
     vr::VRInputComponentHandle_t skeleton_component_handle_;
 
