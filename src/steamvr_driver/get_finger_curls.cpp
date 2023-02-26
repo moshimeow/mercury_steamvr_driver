@@ -1,15 +1,7 @@
 // !!!!!THIS WAS COPIED FROM MERCURY_TRAIN!!!!! Please at some point put this into Monado, or something.
 
 #pragma once
-#include "dataloader_common.hpp"
-#include "math/m_eigen_interop.hpp"
-#include "util/u_logging.h"
-
-using namespace xrt::auxiliary::math;
-
-// note! in mercury_train, the 0th pose is the elbow, the 1st is the wrist, and the rest is the same.
-// This is fine for us (?) because we didn't care about XRT_HAND_JOINT_PALM ever anyhow
-using hand26 = std::array<xrt_pose, 26>;
+#include "get_finger_curls.hpp"
 
 /*!
  * Converts a quaternion to XY-swing and Z-twist
@@ -84,11 +76,28 @@ thumb_curl_sum(const hand26 &gt)
     Eigen::Quaternionf wrist = map_quat(gt[0].orientation);
 
     // Thumb part!
-    Eigen::Quaternionf unrotate = wrist * thumb_hidden_orientation;
+    Eigen::Quaternionf last_orientation = wrist * thumb_hidden_orientation;
 
-    U_LOG_T("Thumb!");
+    // U_LOG_T("Thumb!");
 
-    return curl_diff(gt, 1, unrotate);
+    float ret = 0.0f;
+
+    //     // For proximal, intermediate, distal, (tip has 0 rotation so no)
+    for (int pos = XRT_HAND_JOINT_THUMB_METACARPAL; pos < XRT_HAND_JOINT_THUMB_TIP; pos++)
+    {
+        Eigen::Quaternionf this_orientation = map_quat(gt[pos].orientation);
+
+        Eigen::Quaternionf diff = last_orientation.conjugate() * this_orientation;
+
+        float curl = quat2curl(diff);
+
+        // U_LOG_T("Pos %d joint %d curl %f", pos, i, curl);
+        ret += curl;
+
+        last_orientation = this_orientation;
+    }
+
+    return ret;
 }
 
 void hand_curls(const hand26 &gt, std::array<float, 5> &curls_out)
