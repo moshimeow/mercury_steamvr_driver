@@ -462,6 +462,12 @@ int main(int argc, char **argv)
     u_var_add_f32(&state, &state.bs[0].curls[3], "left.curls[3]");
     u_var_add_f32(&state, &state.bs[0].curls[4], "left.curls[4]");
 
+
+        u_var_add_bool(&state, &dgs.curled[0][0], "left.curlsed[1]");
+    u_var_add_bool(&state, &dgs.curled[0][1], "left.curlsed[2]");
+    u_var_add_bool(&state, &dgs.curled[0][2], "left.curlsed[3]");
+    u_var_add_bool(&state, &dgs.curled[0][3], "left.curlsed[4]");
+
     u_var_add_bool(&state, &state.bs[1].a, "right.a");
     u_var_add_bool(&state, &state.bs[1].b, "right.b");
     u_var_add_bool(&state, &state.bs[1].trigger, "right.trigger");

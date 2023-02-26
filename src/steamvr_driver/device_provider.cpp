@@ -275,7 +275,7 @@ void DeviceProvider::HandTrackingThread()
             // }
             if (WSAGetLastError() == WSAECONNRESET && TRY_RESTART)
             {
-                os_nanosleep(500 * U_TIME_1MS_IN_NS);
+                os_nanosleep(5000 * U_TIME_1MS_IN_NS);
                 if (!StartSubprocess())
                 {
                     return;

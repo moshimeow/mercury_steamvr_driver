@@ -6,16 +6,20 @@
 // #include "xrt/xrt_defines.h"
 #include "math/m_eigen_interop.hpp"
 #include "u_subprocess_logging.h"
+#include "debouncer.hpp"
 
 #define meow_printf U_SP_LOG_E
 
-struct decider_global_state
-{
-    bool snap_up = {};
-    bool snap_down = {};
+//!@todo I hate to write global state in but I'm on a huge time crunch and don't have external reviewers. Please make this more reasonable.
+// struct decider_global_state
+// {
+//     bool snap_up = {};
+//     bool snap_down = {};
 
-    bool curls[2][4] = {};
-}
+//     bool curled[2][4] = {};
+// };
+
+struct decider_global_state dgs;
 
 struct everything_else_decider
 {
@@ -115,12 +119,20 @@ void thumbstick(xrt_pose hand0, xrt_pose hand1, float &thumbstick_value, bool &t
     {
         thumbstick_gesture = true;
 
-        thumbstick_value = hand_height(hand0, hand1) * 14;
+        thumbstick_value = hand_height(hand0, hand1) * 15;
 
         // Very shitty deadzone. This isn't how you should do it.
-        if (fabsf(thumbstick_value) < 0.1)
-        {
-            goto undetected;
+        // but it doesn't matter.
+        float deadzone_value = 0.2f;
+        // if (fabsf(thumbstick_value) < 0.15)
+        // {
+        //     goto undetected;
+        // }
+
+        if (thumbstick_value > 0) {
+            thumbstick_value = fmaxf(0, thumbstick_value - deadzone_value);
+        } else {
+            thumbstick_value = fminf(0, thumbstick_value + deadzone_value);
         }
 
         return;
@@ -136,8 +148,20 @@ void thumbstick_turn(xrt_pose hand0, xrt_pose hand1, float &thumbstick_value, bo
 
     if (both_hands_good(hand0, hand1, thumbstick_left_hand_up_pose(), thumbstick_left_hand_right_pose()))
     {
+        float val = -hand_height(hand0, hand1) * 10;
+
+        debounce(val, 0.9, 0.3, &dgs.snap_up);
+        debounce(val, -0.9, -0.3, &dgs.snap_down);
+
+        if (dgs.snap_down) {
+            thumbstick_value = -1.0f;
+        } else if (dgs.snap_up) {
+            thumbstick_value = 1.0f;
+        } else {
+            goto undetected;
+        }
+
         thumbstick_gesture = true;
-        thumbstick_value = -hand_height(hand0, hand1) * 10;
 
         return;
     }
@@ -161,6 +185,14 @@ void curls(everything_else_decider &dec, int hand_idx)
     for (int i = 0; i < 5; i++)
     {
         dec.base.hands[hand_idx].bs.curls[i] = curls[i];
+
+        if (i == 0)
+        {
+            continue;
+        }
+        float thresh_uncurled = -1.0f;
+        float thresh_curled = -2.0f;
+        debounce(curls[i], thresh_curled, thresh_uncurled, &dgs.curled[hand_idx][i - 1]);
     }
 }
 
@@ -169,15 +201,15 @@ void a(everything_else_decider &dec, int hand_idx)
 {
     // A is the "horns" gesture
 
-    float *curls = dec.base.hands[hand_idx].bs.curls;
+    // float *curls = dec.base.hands[hand_idx].bs.curls;
 
     float thresh_uncurled = -1.0f;
     float thresh_curled = -2.0f;
 
-    bool good = curls[1] > thresh_uncurled && //
-                curls[2] < thresh_curled &&   //
-                curls[3] < thresh_curled &&   //
-                curls[4] > thresh_uncurled;
+    bool good = !dgs.curled[hand_idx][0] && //
+                dgs.curled[hand_idx][1] &&  //
+                dgs.curled[hand_idx][2] &&  //
+                !dgs.curled[hand_idx][3];
     if (good)
     {
         dec.base.hands[hand_idx].bs.a = true;
@@ -192,15 +224,14 @@ void b(everything_else_decider &dec, int hand_idx)
 {
     // B is: All fingers down except for pinky
 
-    float *curls = dec.base.hands[hand_idx].bs.curls;
-
     float thresh_uncurled = -1.0f;
     float thresh_curled = -2.0f;
 
-    bool good = curls[1] < thresh_curled && //
-                curls[2] < thresh_curled && //
-                curls[3] < thresh_curled && //
-                curls[4] > thresh_uncurled;
+    bool good = dgs.curled[hand_idx][0] && //
+                dgs.curled[hand_idx][1] && //
+                dgs.curled[hand_idx][2] && //
+                !dgs.curled[hand_idx][3];
+
     if (good)
     {
         dec.base.hands[hand_idx].bs.b = true;

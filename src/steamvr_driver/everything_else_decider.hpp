@@ -17,5 +17,16 @@
 
 #define meow_printf U_SP_LOG_E
 
+// I'M SORRY
+
+struct decider_global_state
+{
+    bool snap_up = {};
+    bool snap_down = {};
+
+    bool curled[2][4] = {};
+};
+extern struct decider_global_state dgs;
+
 
 void decide_everything_else(tracking_message &msg, xrt_pose head);
