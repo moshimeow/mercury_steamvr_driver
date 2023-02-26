@@ -79,7 +79,6 @@ struct subprocess_state
     struct m_filter_euro_vec3 vector_filters[2];
     struct m_filter_euro_quat quat_filters[2];
 
-    bool pinch[2] = {false, false};
     struct emulated_buttons_state bs[2] = {};
 };
 
@@ -230,8 +229,9 @@ void hjs2_to_tracking_message(subprocess_state &state, xrt_hand_joint_set sets[2
             continue;
         }
 
-        trigger_decide(set, &state.pinch[hand_idx]);
-        msg.hands[hand_idx].trigger = state.pinch[hand_idx];
+        bool &pinch = state.bs[hand_idx].pinch;
+        trigger_decide(set, &pinch);
+        msg.hands[hand_idx].trigger = pinch;
 
         xrt_space_relation wrist = set.values.hand_joint_set_default[XRT_HAND_JOINT_WRIST].relation;
         xrt_space_relation index_pxm = set.values.hand_joint_set_default[XRT_HAND_JOINT_INDEX_PROXIMAL].relation;
