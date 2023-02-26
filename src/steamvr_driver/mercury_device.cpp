@@ -58,9 +58,35 @@ vr::EVRInitError MercuryHandDevice::Activate(uint32_t unObjectId)
         OPENVR_BONE_COUNT,
         &skeleton_component_handle_);
 
-    vr::VRDriverInput()->CreateBooleanComponent(props, "/input/trigger/click", &trigger_click_);
-    vr::VRDriverInput()->CreateBooleanComponent(props, "/input/trigger/value", &trigger_value_);
+    {
+        vr::VRDriverInput()->CreateBooleanComponent(props, "/input/system/click", &input_components_[kKnuckleDeviceComponentIndex_SystemClick]);
+        vr::VRDriverInput()->CreateBooleanComponent(props, "/input/system/touch", &input_components_[kKnuckleDeviceComponentIndex_SystemTouch]);
 
+        vr::VRDriverInput()->CreateBooleanComponent(props, "/input/trigger/click", &input_components_[kKnuckleDeviceComponentIndex_TriggerClick]);
+        vr::VRDriverInput()->CreateBooleanComponent(props, "/input/trigger/value", &input_components_[kKnuckleDeviceComponentIndex_TriggerValue]);
+
+        // vr::VRDriverInput()->CreateScalarComponent(props, "/input/trackpad/x", &input_components_[kKnuckleDeviceComponentIndex_TrackpadX], vr::VRScalarType_Absolute, vr::VRScalarUnits_NormalizedTwoSided);
+        // vr::VRDriverInput()->CreateScalarComponent(props, "/input/trackpad/y", &input_components_[kKnuckleDeviceComponentIndex_TrackpadY], vr::VRScalarType_Absolute, vr::VRScalarUnits_NormalizedTwoSided);
+
+        vr::VRDriverInput()->CreateBooleanComponent(props, "/input/grip/touch", &input_components_[kKnuckleDeviceComponentIndex_GripTouch]);
+        vr::VRDriverInput()->CreateScalarComponent(props, "/input/grip/force", &input_components_[kKnuckleDeviceComponentIndex_GripForce], vr::VRScalarType_Absolute, vr::VRScalarUnits_NormalizedOneSided);
+        vr::VRDriverInput()->CreateScalarComponent(props, "/input/grip/value", &input_components_[kKnuckleDeviceComponentIndex_GripValue], vr::VRScalarType_Absolute, vr::VRScalarUnits_NormalizedOneSided);
+
+        vr::VRDriverInput()->CreateBooleanComponent(props, "/input/thumbstick/click", &input_components_[kKnuckleDeviceComponentIndex_ThumbstickClick]);
+        vr::VRDriverInput()->CreateBooleanComponent(props, "/input/thumbstick/touch", &input_components_[kKnuckleDeviceComponentIndex_ThumbstickTouch]);
+        vr::VRDriverInput()->CreateScalarComponent(props, "/input/thumbstick/x", &input_components_[kKnuckleDeviceComponentIndex_ThumbstickX], vr::VRScalarType_Absolute, vr::VRScalarUnits_NormalizedTwoSided);
+        vr::VRDriverInput()->CreateScalarComponent(props, "/input/thumbstick/y", &input_components_[kKnuckleDeviceComponentIndex_ThumbstickY], vr::VRScalarType_Absolute, vr::VRScalarUnits_NormalizedTwoSided);
+
+        vr::VRDriverInput()->CreateBooleanComponent(props, "/input/a/click", &input_components_[kKnuckleDeviceComponentIndex_AClick]);
+        vr::VRDriverInput()->CreateBooleanComponent(props, "/input/a/touch", &input_components_[kKnuckleDeviceComponentIndex_ATouch]);
+        vr::VRDriverInput()->CreateBooleanComponent(props, "/input/b/click", &input_components_[kKnuckleDeviceComponentIndex_BClick]);
+        vr::VRDriverInput()->CreateBooleanComponent(props, "/input/b/touch", &input_components_[kKnuckleDeviceComponentIndex_BTouch]);
+
+        vr::VRDriverInput()->CreateScalarComponent(props, "/input/finger/index", &input_components_[kKnuckleDeviceComponentIndex_FingerIndex], vr::VRScalarType_Absolute, vr::VRScalarUnits_NormalizedOneSided);
+        vr::VRDriverInput()->CreateScalarComponent(props, "/input/finger/middle", &input_components_[kKnuckleDeviceComponentIndex_FingerMiddle], vr::VRScalarType_Absolute, vr::VRScalarUnits_NormalizedOneSided);
+        vr::VRDriverInput()->CreateScalarComponent(props, "/input/finger/ring", &input_components_[kKnuckleDeviceComponentIndex_FingerRing], vr::VRScalarType_Absolute, vr::VRScalarUnits_NormalizedOneSided);
+        vr::VRDriverInput()->CreateScalarComponent(props, "/input/finger/pinky", &input_components_[kKnuckleDeviceComponentIndex_FingerPinky], vr::VRScalarType_Absolute, vr::VRScalarUnits_NormalizedOneSided);
+    }
     // below, as-is, broke hand tracking input. Unsure.
     // The role hint is different from the role, so this should be fine.
     // vr::VRProperties()->SetInt32Property(props, vr::Prop_ControllerRoleHint_Int32, IsLeftHand() ? vr::TrackedControllerRole_RightHand : vr::TrackedControllerRole_LeftHand);
@@ -218,15 +244,58 @@ update:
     vr::VRServerDriverHost()->TrackedDevicePoseUpdated(device_id_, pose, sizeof(vr::DriverPose_t));
 }
 
-void MercuryHandDevice::UpdateFakeControllerInput(bool trigger)
+// Note: It doesn't matter if we constantly send updates with the same value, that's fine. This function strives _not_ to just because it's a waste, but it still does for some things. It's fine.
+void MercuryHandDevice::UpdateFakeControllerInput(emulated_buttons_state buttons_state)
 {
-    if (trigger_ != trigger)
+    if (buttons_state_.trigger != buttons_state.trigger)
     {
-        DriverLog("Updated ! %d", trigger);
-        vr::VRDriverInput()->UpdateBooleanComponent(trigger_click_, trigger, 0);
-        vr::VRDriverInput()->UpdateScalarComponent(trigger_value_, trigger ? 1.0f : 0.0f, 0);
+        // DriverLog("Updated ! %d", buttons_state.trigger);
+        vr::VRDriverInput()->UpdateBooleanComponent(input_components_[kKnuckleDeviceComponentIndex_TriggerClick], buttons_state.trigger, 0);
+        vr::VRDriverInput()->UpdateScalarComponent(input_components_[kKnuckleDeviceComponentIndex_TriggerValue], buttons_state.trigger ? 1.0f : 0.0f, 0);
     }
-    trigger_ = trigger;
+
+    if (buttons_state_.a != buttons_state.a)
+    {
+        bool val = buttons_state.a;
+        vr::VRDriverInput()->UpdateBooleanComponent(input_components_[kKnuckleDeviceComponentIndex_AClick], val, 0);
+        vr::VRDriverInput()->UpdateBooleanComponent(input_components_[kKnuckleDeviceComponentIndex_ATouch], val, 0);
+    }
+
+    if (buttons_state_.b != buttons_state.b)
+    {
+        bool val = buttons_state.b;
+        vr::VRDriverInput()->UpdateBooleanComponent(input_components_[kKnuckleDeviceComponentIndex_BClick], val, 0);
+        vr::VRDriverInput()->UpdateBooleanComponent(input_components_[kKnuckleDeviceComponentIndex_BTouch], val, 0);
+    }
+
+    if (buttons_state_.grip != buttons_state.grip)
+    {
+        bool val = buttons_state.grip;
+        float val_scalar = val ? 1.0f : 0.0f;
+        vr::VRDriverInput()->UpdateBooleanComponent(input_components_[kKnuckleDeviceComponentIndex_GripTouch], val, 0);
+        vr::VRDriverInput()->UpdateScalarComponent(input_components_[kKnuckleDeviceComponentIndex_GripForce], val_scalar, 0);
+        vr::VRDriverInput()->UpdateScalarComponent(input_components_[kKnuckleDeviceComponentIndex_GripValue], val_scalar, 0);
+    }
+
+    if (buttons_state_.thumbstick_gesture)
+    {
+        vr::VRDriverInput()->UpdateScalarComponent(input_components_[kKnuckleDeviceComponentIndex_ThumbstickX], buttons_state_.thumbstick_x, 0);
+        vr::VRDriverInput()->UpdateScalarComponent(input_components_[kKnuckleDeviceComponentIndex_ThumbstickY], buttons_state_.thumbstick_y, 0);
+
+        vr::VRDriverInput()->UpdateBooleanComponent(input_components_[kKnuckleDeviceComponentIndex_ThumbstickTouch], true, 0);
+    }
+    else
+    {
+        vr::VRDriverInput()->UpdateBooleanComponent(input_components_[kKnuckleDeviceComponentIndex_ThumbstickTouch], false, 0);
+    }
+
+    if (buttons_state_.thumbstick_x != 0)
+    {
+    }
+    else
+    {
+    }
+    buttons_state_ = buttons_state;
 }
 
 // todo: what do we want to do here?

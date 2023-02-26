@@ -303,6 +303,8 @@ void DeviceProvider::HandTrackingThread()
             continue;
         }
 
+        DriverLog(TM_FMT(message));
+
         // if (message.is_just_keepalive)
         // {
         //     continue;
@@ -361,8 +363,8 @@ void DeviceProvider::HandTrackingThread()
         m_relation_history_push(left_hand_->pose_raw_hist_, &tips[0], message.camera_timestamp);
         m_relation_history_push(right_hand_->pose_raw_hist_, &tips[1], message.camera_timestamp);
 
-        left_hand_->UpdateFakeControllerInput(message.hands[0].trigger);
-        right_hand_->UpdateFakeControllerInput(message.hands[1].trigger);
+        left_hand_->UpdateFakeControllerInput(message.hands[0].bs);
+        right_hand_->UpdateFakeControllerInput(message.hands[1].bs);
 
 #ifdef TIMING_DEBUGGING
         timestamps_debug_ << std::to_string(message.camera_timestamp) << ", "
