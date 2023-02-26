@@ -19,5 +19,13 @@ os.system("ninja -C build")
 
 kill_processes("tracking_subprocess_copy.exe")
 
-shutil.copy("build\\mercury\\bin\\win64\\tracking_subprocess.exe", "build\\mercury\\bin\\win64\\tracking_subprocess_copy.exe")
-
+copied = False
+for i in range(10):
+    print("Copying")
+    try:
+        shutil.copy("build\\mercury\\bin\\win64\\tracking_subprocess.exe", "build\\mercury\\bin\\win64\\tracking_subprocess_copy.exe")
+        copied = True
+        break
+    except PermissionError:
+        print("Couldn't copy")
+print("Copied: ", copied)

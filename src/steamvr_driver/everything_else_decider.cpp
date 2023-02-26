@@ -101,9 +101,6 @@ inline static bool both_hands_good(xrt_pose hand0, xrt_pose hand1, xrt_quat hand
     bool left_ = left < 0.25;
     bool right_ = right < 0.25;
 
-    // meow_printf("%d %d, %f %f", left_, right_, left, right);
-    // meow_printf(" I am this file!!!");
-
     return (left_ && right_);
 }
 
@@ -112,34 +109,54 @@ float hand_height(xrt_pose hand0, xrt_pose hand1)
     return hand1.position.y - (hand0.position.y + 0.03);
 }
 
-void thumbstick(xrt_pose hand0, xrt_pose hand1, float &thumbstick_value, bool &thumbstick_gesture)
+float hand_dist(xrt_pose hand0, xrt_pose hand1)
+{
+    return hand1.position.z - hand0.position.z;
+}
+
+void thumbstick(xrt_pose hand0, xrt_pose hand1, float &thumbstick_value_y, float &thumbstick_value_x, bool &thumbstick_gesture)
 {
 
     if (both_hands_good(hand0, hand1, thumbstick_left_hand_up_pose(), thumbstick_right_hand_left_pose()))
     {
         thumbstick_gesture = true;
+        {
+            thumbstick_value_y = hand_dist(hand0, hand1) * 12;
 
-        thumbstick_value = hand_height(hand0, hand1) * 15;
+            // I think this deadzone stuff is good
+            float deadzone_value = 0.2f;
 
-        // Very shitty deadzone. This isn't how you should do it.
-        // but it doesn't matter.
-        float deadzone_value = 0.2f;
-        // if (fabsf(thumbstick_value) < 0.15)
-        // {
-        //     goto undetected;
-        // }
+            if (thumbstick_value_y > 0)
+            {
+                thumbstick_value_y = fmaxf(0, thumbstick_value_y - deadzone_value);
+            }
+            else
+            {
+                thumbstick_value_y = fminf(0, thumbstick_value_y + deadzone_value);
+            }
+        }
 
-        if (thumbstick_value > 0) {
-            thumbstick_value = fmaxf(0, thumbstick_value - deadzone_value);
-        } else {
-            thumbstick_value = fminf(0, thumbstick_value + deadzone_value);
+        {
+            thumbstick_value_x = -hand_height(hand0, hand1) * 4;
+
+            // I think this deadzone stuff is good
+            float deadzone_value = 0.2f;
+
+            if (thumbstick_value_x > 0)
+            {
+                thumbstick_value_x = fmaxf(0, thumbstick_value_x - deadzone_value);
+            }
+            else
+            {
+                thumbstick_value_x = fminf(0, thumbstick_value_x + deadzone_value);
+            }
         }
 
         return;
     }
 
-undetected:
-    thumbstick_value = 0.0f;
+    thumbstick_value_x = 0.0f;
+    thumbstick_value_y = 0.0f;
     thumbstick_gesture = false;
 }
 
@@ -153,11 +170,16 @@ void thumbstick_turn(xrt_pose hand0, xrt_pose hand1, float &thumbstick_value, bo
         debounce(val, 0.9, 0.3, &dgs.snap_up);
         debounce(val, -0.9, -0.3, &dgs.snap_down);
 
-        if (dgs.snap_down) {
-            thumbstick_value = -1.0f;
-        } else if (dgs.snap_up) {
+        if (dgs.snap_down)
+        {
             thumbstick_value = 1.0f;
-        } else {
+        }
+        else if (dgs.snap_up)
+        {
+            thumbstick_value = -1.0f;
+        }
+        else
+        {
             goto undetected;
         }
 
@@ -201,11 +223,6 @@ void a(everything_else_decider &dec, int hand_idx)
 {
     // A is the "horns" gesture
 
-    // float *curls = dec.base.hands[hand_idx].bs.curls;
-
-    float thresh_uncurled = -1.0f;
-    float thresh_curled = -2.0f;
-
     bool good = !dgs.curled[hand_idx][0] && //
                 dgs.curled[hand_idx][1] &&  //
                 dgs.curled[hand_idx][2] &&  //
@@ -224,9 +241,6 @@ void b(everything_else_decider &dec, int hand_idx)
 {
     // B is: All fingers down except for pinky
 
-    float thresh_uncurled = -1.0f;
-    float thresh_curled = -2.0f;
-
     bool good = dgs.curled[hand_idx][0] && //
                 dgs.curled[hand_idx][1] && //
                 dgs.curled[hand_idx][2] && //
@@ -239,6 +253,30 @@ void b(everything_else_decider &dec, int hand_idx)
     else
     {
         dec.base.hands[hand_idx].bs.b = false;
+    }
+}
+
+void system_button(everything_else_decider &dec)
+{
+    // System: Peace sign with both hands. This is how you peace out!
+
+    bool good = true;
+
+    for (int hand_idx = 0; hand_idx < 2; hand_idx++)
+    {
+        good = good && !dgs.curled[hand_idx][0];
+        good = good && !dgs.curled[hand_idx][1];
+        good = good && dgs.curled[hand_idx][2];
+        good = good && dgs.curled[hand_idx][3];
+    }
+
+    if (good)
+    {
+        dec.base.hands[0].bs.system = true;
+    }
+    else
+    {
+        dec.base.hands[0].bs.system = false;
     }
 }
 
@@ -271,15 +309,18 @@ void decide_everything_else(tracking_message &msg, xrt_pose head)
 
     if (msg.hands[0].tracked && msg.hands[1].tracked)
     {
-        thumbstick(dec.hands_head_local[0], dec.hands_head_local[1], dec.base.hands[0].bs.thumbstick_y, dec.base.hands[0].bs.thumbstick_gesture);
+        thumbstick(dec.hands_head_local[0], dec.hands_head_local[1], dec.base.hands[0].bs.thumbstick_y, dec.base.hands[0].bs.thumbstick_x, dec.base.hands[0].bs.thumbstick_gesture);
         thumbstick_turn(dec.hands_head_local[1], dec.hands_head_local[0], dec.base.hands[1].bs.thumbstick_x, dec.base.hands[1].bs.thumbstick_gesture);
     }
+
+    system_button(dec);
+
     // meow_printf("%f", quat_difference(dec.hands_head_local[0].orientation, up_pose));
     // meow_printf("%f", quat_difference(up_pose_2, up_pose));
 
     // meow_printf("%f %f %f %f, %f %f %f %f", dec.hands_head_local[0].orientation.w, dec.hands_head_local[0].orientation.x, dec.hands_head_local[0].orientation.y, dec.hands_head_local[0].orientation.z,
     //             up_pose_2.w, up_pose_2.x, up_pose_2.y, up_pose_2.z);
 
-    meow_printf("%f %f %f %f, %f %f %f %f", dec.hands_head_local[0].orientation.w, dec.hands_head_local[0].orientation.x, dec.hands_head_local[0].orientation.y, dec.hands_head_local[0].orientation.z,
-                dec.hands_head_local[1].orientation.w, dec.hands_head_local[1].orientation.x, dec.hands_head_local[1].orientation.y, dec.hands_head_local[1].orientation.z);
+    // meow_printf("%f %f %f %f, %f %f %f %f", dec.hands_head_local[0].orientation.w, dec.hands_head_local[0].orientation.x, dec.hands_head_local[0].orientation.y, dec.hands_head_local[0].orientation.z,
+    //             dec.hands_head_local[1].orientation.w, dec.hands_head_local[1].orientation.x, dec.hands_head_local[1].orientation.y, dec.hands_head_local[1].orientation.z);
 }

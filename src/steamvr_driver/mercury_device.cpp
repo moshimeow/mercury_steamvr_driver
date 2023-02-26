@@ -252,6 +252,14 @@ void curl(MercuryHandDevice &dev, enum KnuckleDeviceComponentIndex idx, float cu
 // Note: It doesn't matter if we constantly send updates with the same value, that's fine. This function strives _not_ to just because it's a waste, but it still does for some things. It's fine.
 void MercuryHandDevice::UpdateFakeControllerInput(emulated_buttons_state buttons_state)
 {
+
+    if (buttons_state_.system != buttons_state.system)
+    {
+        // DriverLog("Updated ! %d", buttons_state.system);
+        vr::VRDriverInput()->UpdateBooleanComponent(input_components_[kKnuckleDeviceComponentIndex_SystemClick], buttons_state.system, 0);
+        vr::VRDriverInput()->UpdateBooleanComponent(input_components_[kKnuckleDeviceComponentIndex_SystemTouch], buttons_state.system, 0);
+    }
+
     if (buttons_state_.trigger != buttons_state.trigger)
     {
         // DriverLog("Updated ! %d", buttons_state.trigger);
@@ -296,6 +304,11 @@ void MercuryHandDevice::UpdateFakeControllerInput(emulated_buttons_state buttons
         vr::VRDriverInput()->UpdateScalarComponent(input_components_[kKnuckleDeviceComponentIndex_ThumbstickY], 0, 0);
         vr::VRDriverInput()->UpdateBooleanComponent(input_components_[kKnuckleDeviceComponentIndex_ThumbstickTouch], false, 0);
     }
+
+    vr::VRDriverInput()->UpdateScalarComponent(input_components_[kKnuckleDeviceComponentIndex_FingerIndex], buttons_state_.curls[1] * -0.4, 0);
+    vr::VRDriverInput()->UpdateScalarComponent(input_components_[kKnuckleDeviceComponentIndex_FingerMiddle], buttons_state_.curls[2] * -0.4, 0);
+    vr::VRDriverInput()->UpdateScalarComponent(input_components_[kKnuckleDeviceComponentIndex_FingerRing], buttons_state_.curls[3] * -0.4, 0);
+    vr::VRDriverInput()->UpdateScalarComponent(input_components_[kKnuckleDeviceComponentIndex_FingerPinky], buttons_state_.curls[4] * -0.4, 0);
 
     buttons_state_ = buttons_state;
 }
