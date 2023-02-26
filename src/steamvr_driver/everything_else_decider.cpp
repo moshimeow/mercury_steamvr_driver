@@ -17,7 +17,7 @@ struct everything_else_decider
     everything_else_decider(tracking_message &msg) : base(msg) {}
 };
 
-inline xrt_quat thumbstick_left_hand_up_pose()
+inline static xrt_quat thumbstick_left_hand_up_pose()
 {
 #if 1
     xrt_quat up_pose;
@@ -38,7 +38,7 @@ inline xrt_quat thumbstick_left_hand_up_pose()
     return up_pose;
 }
 
-inline xrt_quat thumbstick_right_hand_left_pose()
+inline static xrt_quat thumbstick_right_hand_left_pose()
 {
 #if 1
     xrt_quat up_pose;
@@ -79,7 +79,7 @@ float quat_difference(xrt_quat q1, xrt_quat q2)
     return 1.0 - (inner_product * inner_product);
 }
 
-bool both_hands_good(xrt_pose hand0, xrt_pose hand1, xrt_quat hand0_target, xrt_quat hand1_target)
+inline static bool both_hands_good(xrt_pose hand0, xrt_pose hand1, xrt_quat hand0_target, xrt_quat hand1_target)
 {
 
     float left = quat_difference(hand0.orientation, hand0_target);
@@ -95,24 +95,19 @@ bool both_hands_good(xrt_pose hand0, xrt_pose hand1, xrt_quat hand0_target, xrt_
     return (left_ && right_);
 }
 
+float hand_height(xrt_pose hand0, xrt_pose hand1)
+{
+    return hand1.position.y - (hand0.position.y + 0.03);
+}
+
 void thumbstick(xrt_pose hand0, xrt_pose hand1, float &thumbstick_value, bool &thumbstick_gesture)
 {
-    float left = quat_difference(hand0.orientation, thumbstick_left_hand_up_pose());
-    float right = quat_difference(hand1.orientation, thumbstick_right_hand_left_pose());
 
-    // Closer to 0 is better
-    bool left_ = left < 0.25;
-    bool right_ = right < 0.25;
-
-    meow_printf("%d %d, %f %f", left_, right_, left, right);
-    // meow_printf(" I am this file!!!");
-
-    if (left_ && right_)
+    if (both_hands_good(hand0, hand1, thumbstick_left_hand_up_pose(), thumbstick_right_hand_left_pose()))
     {
         thumbstick_gesture = true;
 
-        // thumbstick_value = (hand0.position.z - hand1.position.z) * 12;
-        thumbstick_value = (hand1.position.y - (hand0.position.y + 0.03)) * 12;
+        thumbstick_value = hand_height(hand0, hand1) * 14;
 
         // Very shitty deadzone. This isn't how you should do it.
         if (fabsf(thumbstick_value) < 0.1)
@@ -130,32 +125,11 @@ undetected:
 
 void thumbstick_turn(xrt_pose hand0, xrt_pose hand1, float &thumbstick_value, bool &thumbstick_gesture)
 {
-    float left = quat_difference(hand0.orientation, thumbstick_left_hand_up_pose());
-    float right = quat_difference(hand1.orientation, thumbstick_left_hand_right_pose());
 
-    // Closer to 0 is better
-    bool left_ = left < 0.25;
-    bool right_ = right < 0.25;
-
-    meow_printf("%d %d, %f %f", left_, right_, left, right);
-
-    // We don't just want to set it to 1, 0 or -1 because then it doesn't get debounced. If we set it to a correctly-varying value, VRChat will debounce it for us.
-    if (left_ && right_)
+    if (both_hands_good(hand0, hand1, thumbstick_left_hand_up_pose(), thumbstick_left_hand_right_pose()))
     {
         thumbstick_gesture = true;
-
-        float y_0 = hand0.position.y + 0.03;
-        float y_1 = hand1.position.y;
-
-        float diff = y_0 - y_1;
-        diff *= 10;
-
-        thumbstick_value = diff;
-
-        // if (fabsf(diff) < 0.1)
-        // {
-        //     goto undetected;
-        // }
+        thumbstick_value = -hand_height(hand0, hand1) * 10;
 
         return;
     }
