@@ -7,6 +7,7 @@
 #include "math/m_eigen_interop.hpp"
 #include "u_subprocess_logging.h"
 #include "debouncer.hpp"
+#include "u_subprocess_logging.h"
 
 #define meow_printf U_SP_LOG_E
 
@@ -109,6 +110,11 @@ float hand_height(xrt_pose hand0, xrt_pose hand1)
     return hand1.position.y - (hand0.position.y + 0.03);
 }
 
+float hand_x(xrt_pose hand0, xrt_pose hand1)
+{
+    return hand1.position.x - (hand0.position.x + 0.36);
+}
+
 float hand_dist(xrt_pose hand0, xrt_pose hand1)
 {
     return hand1.position.z - hand0.position.z;
@@ -137,10 +143,12 @@ void thumbstick(xrt_pose hand0, xrt_pose hand1, float &thumbstick_value_y, float
         }
 
         {
-            thumbstick_value_x = -hand_height(hand0, hand1) * 4;
+            thumbstick_value_x = -hand_x(hand0, hand1);
+
+            meow_printf("%f", thumbstick_value_x);
 
             // I think this deadzone stuff is good
-            float deadzone_value = 0.2f;
+            float deadzone_value = 0.0125;
 
             if (thumbstick_value_x > 0)
             {
@@ -150,6 +158,9 @@ void thumbstick(xrt_pose hand0, xrt_pose hand1, float &thumbstick_value_y, float
             {
                 thumbstick_value_x = fminf(0, thumbstick_value_x + deadzone_value);
             }
+
+            thumbstick_value_x *= 8;
+            meow_printf("%f", thumbstick_value_x);
         }
 
         return;
@@ -303,8 +314,16 @@ void decide_everything_else(tracking_message &msg, xrt_pose head)
 
         dec.hands_head_local[i] = tmp.pose;
         curls(dec, i);
-        a(dec, i);
-        b(dec, i);
+        if (msg.hands[i].bs.trigger)
+        {
+            msg.hands[i].bs.a = false;
+            msg.hands[i].bs.b = false;
+        }
+        else
+        {
+            a(dec, i);
+            b(dec, i);
+        }
     }
 
     if (msg.hands[0].tracked && msg.hands[1].tracked)
