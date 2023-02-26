@@ -59,6 +59,17 @@ inline xrt_quat thumbstick_right_hand_left_pose()
     return up_pose;
 }
 
+inline xrt_quat thumbstick_left_hand_right_pose()
+{
+    xrt_quat up_pose;
+    up_pose.w = 0.5;
+    up_pose.x = -0.5;
+    up_pose.y = -0.5;
+    up_pose.z = 0.5;
+
+    return up_pose;
+}
+
 float quat_difference(xrt_quat q1, xrt_quat q2)
 {
     // https://math.stackexchange.com/a/90098
@@ -68,63 +79,90 @@ float quat_difference(xrt_quat q1, xrt_quat q2)
     return 1.0 - (inner_product * inner_product);
 }
 
-void thumbstick(everything_else_decider &dec)
+bool both_hands_good(xrt_pose hand0, xrt_pose hand1, xrt_quat hand0_target, xrt_quat hand1_target)
 {
-    if (!(dec.base.hands[0].tracked && dec.base.hands[1].tracked))
-    {
-        dec.base.hands[0].bs.thumbstick_gesture = false;
-        return;
-    }
-    float left = quat_difference(dec.hands_head_local[0].orientation, thumbstick_left_hand_up_pose());
-    float right = quat_difference(dec.hands_head_local[1].orientation, thumbstick_right_hand_left_pose());
+
+    float left = quat_difference(hand0.orientation, hand0_target);
+    float right = quat_difference(hand1.orientation, hand1_target);
+
+    // Closer to 0 is better
+    bool left_ = left < 0.25;
+    bool right_ = right < 0.25;
+
+    // meow_printf("%d %d, %f %f", left_, right_, left, right);
+    // meow_printf(" I am this file!!!");
+
+    return (left_ && right_);
+}
+
+void thumbstick(xrt_pose hand0, xrt_pose hand1, float &thumbstick_value, bool &thumbstick_gesture)
+{
+    float left = quat_difference(hand0.orientation, thumbstick_left_hand_up_pose());
+    float right = quat_difference(hand1.orientation, thumbstick_right_hand_left_pose());
 
     // Closer to 0 is better
     bool left_ = left < 0.25;
     bool right_ = right < 0.25;
 
     meow_printf("%d %d, %f %f", left_, right_, left, right);
-    meow_printf(" I am this file!!!");
+    // meow_printf(" I am this file!!!");
 
     if (left_ && right_)
     {
-        dec.base.hands[0].bs.thumbstick_gesture = true;
+        thumbstick_gesture = true;
 
-        dec.base.hands[0].bs.thumbstick_y = (dec.hands_head_local[0].position.z - dec.hands_head_local[1].position.z) * 12;
+        // thumbstick_value = (hand0.position.z - hand1.position.z) * 12;
+        thumbstick_value = (hand1.position.y - (hand0.position.y + 0.03)) * 12;
 
         // Very shitty deadzone. This isn't how you should do it.
-        if (fabsf(dec.base.hands[0].bs.thumbstick_y) < 0.1)
+        if (fabsf(thumbstick_value) < 0.1)
         {
-            dec.base.hands[0].bs.thumbstick_y = 0;
+            goto undetected;
         }
 
-        float left_h = dec.hands_head_local[0].position.y + 0.04;
-        float right_h = dec.hands_head_local[1].position.y;
-
-        float ydiff = left_h - right_h;
-
-        if (fabsf(ydiff) > 0.1)
-        {
-            // Yes, right hand controller. This is what works with my VRChat profile.
-            if (left_h > right_h)
-            {
-                dec.base.hands[1].bs.thumbstick_x = 1.0f;
-            }
-            else
-            {
-                dec.base.hands[1].bs.thumbstick_x = -1.0f;
-            }
-            dec.base.hands[1].bs.thumbstick_gesture = true;
-        }
-        else
-        {
-            dec.base.hands[1].bs.thumbstick_x = 0.0f;
-            dec.base.hands[1].bs.thumbstick_gesture = false;
-        }
+        return;
     }
-    else
+
+undetected:
+    thumbstick_value = 0.0f;
+    thumbstick_gesture = false;
+}
+
+void thumbstick_turn(xrt_pose hand0, xrt_pose hand1, float &thumbstick_value, bool &thumbstick_gesture)
+{
+    float left = quat_difference(hand0.orientation, thumbstick_left_hand_up_pose());
+    float right = quat_difference(hand1.orientation, thumbstick_left_hand_right_pose());
+
+    // Closer to 0 is better
+    bool left_ = left < 0.25;
+    bool right_ = right < 0.25;
+
+    meow_printf("%d %d, %f %f", left_, right_, left, right);
+
+    // We don't just want to set it to 1, 0 or -1 because then it doesn't get debounced. If we set it to a correctly-varying value, VRChat will debounce it for us.
+    if (left_ && right_)
     {
-        dec.base.hands[0].bs.thumbstick_gesture = false;
+        thumbstick_gesture = true;
+
+        float y_0 = hand0.position.y + 0.03;
+        float y_1 = hand1.position.y;
+
+        float diff = y_0 - y_1;
+        diff *= 10;
+
+        thumbstick_value = diff;
+
+        // if (fabsf(diff) < 0.1)
+        // {
+        //     goto undetected;
+        // }
+
+        return;
     }
+
+undetected:
+    thumbstick_value = 0.0f;
+    thumbstick_gesture = false;
 }
 
 void curls(everything_else_decider &dec, int hand_idx)
@@ -162,7 +200,8 @@ void decide_everything_else(tracking_message &msg, xrt_pose head)
         dec.hands_head_local[i] = tmp.pose;
     }
 
-    thumbstick(dec);
+    thumbstick(dec.hands_head_local[0], dec.hands_head_local[1], dec.base.hands[0].bs.thumbstick_y, dec.base.hands[0].bs.thumbstick_gesture);
+    thumbstick_turn(dec.hands_head_local[1], dec.hands_head_local[0], dec.base.hands[1].bs.thumbstick_x, dec.base.hands[1].bs.thumbstick_gesture);
 
     // meow_printf("%f", quat_difference(dec.hands_head_local[0].orientation, up_pose));
     // meow_printf("%f", quat_difference(up_pose_2, up_pose));
