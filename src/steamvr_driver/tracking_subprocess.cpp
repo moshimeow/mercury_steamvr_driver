@@ -456,12 +456,24 @@ int main(int argc, char **argv)
     u_var_add_f32(&state, &state.bs[0].thumbstick_x, "left.thumbstick_x");
     u_var_add_f32(&state, &state.bs[0].thumbstick_y, "left.thumbstick_y");
 
+    u_var_add_f32(&state, &state.bs[0].curls[0], "left.curls[0]");
+    u_var_add_f32(&state, &state.bs[0].curls[1], "left.curls[1]");
+    u_var_add_f32(&state, &state.bs[0].curls[2], "left.curls[2]");
+    u_var_add_f32(&state, &state.bs[0].curls[3], "left.curls[3]");
+    u_var_add_f32(&state, &state.bs[0].curls[4], "left.curls[4]");
+
     u_var_add_bool(&state, &state.bs[1].a, "right.a");
     u_var_add_bool(&state, &state.bs[1].b, "right.b");
     u_var_add_bool(&state, &state.bs[1].trigger, "right.trigger");
     u_var_add_bool(&state, &state.bs[1].thumbstick_gesture, "right.thumbstick_gesture");
     u_var_add_f32(&state, &state.bs[1].thumbstick_x, "right.thumbstick_x");
     u_var_add_f32(&state, &state.bs[1].thumbstick_y, "right.thumbstick_y");
+
+    u_var_add_f32(&state, &state.bs[1].curls[0], "right.curls[0]");
+    u_var_add_f32(&state, &state.bs[1].curls[1], "right.curls[1]");
+    u_var_add_f32(&state, &state.bs[1].curls[2], "right.curls[2]");
+    u_var_add_f32(&state, &state.bs[1].curls[3], "right.curls[3]");
+    u_var_add_f32(&state, &state.bs[1].curls[4], "right.curls[4]");
 
     while (state.running)
     {

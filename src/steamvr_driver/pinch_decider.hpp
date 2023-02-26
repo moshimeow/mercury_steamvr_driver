@@ -13,6 +13,7 @@
 #include "openvr.h"
 #include "u_subprocess_logging.h"
 #include "math/m_vec3.h"
+#include "debouncer.hpp"
 
 #define meow_printf U_SP_LOG_E
 
@@ -25,16 +26,9 @@ decide(xrt_vec3 one, xrt_vec3 two, bool *out)
     float activation_dist = 0.03f;
     float deactivation_dist = 0.06f;
 
-    float pinch_activation_dist = activation_dist;
 
-    if (*out)
-    {
-        pinch_activation_dist = deactivation_dist;
-    }
-    // const float pinch_activation_dist =
-    //     (*out ? activation_dist : deactivation_dist);
 
-    *out = (dist < pinch_activation_dist);
+    debounce(dist, activation_dist, deactivation_dist, out);
 
     U_SP_LOG_E("Meow! %f %d", dist, *out);
 }

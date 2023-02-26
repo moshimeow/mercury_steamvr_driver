@@ -9,6 +9,14 @@
 
 #define meow_printf U_SP_LOG_E
 
+struct decider_global_state
+{
+    bool snap_up = {};
+    bool snap_down = {};
+
+    bool curls[2][4] = {};
+}
+
 struct everything_else_decider
 {
     tracking_message &base;
@@ -141,13 +149,66 @@ undetected:
 
 void curls(everything_else_decider &dec, int hand_idx)
 {
-    // hand26 hand;
-    // for (int i = 0; i < XRT_HAND_JOINT_COUNT; i++) {
-    //     hand[i] = dec.base.hands[hand_idx].fingers_relative[i];
-    // }
+    hand26 hand;
+    for (int i = 0; i < XRT_HAND_JOINT_COUNT; i++)
+    {
+        hand[i] = dec.base.hands[hand_idx].fingers_relative[i];
+    }
 
-    // std::array <float, 5> curls;
-    // hand_curls()
+    std::array<float, 5> curls;
+    hand_curls(hand, curls);
+
+    for (int i = 0; i < 5; i++)
+    {
+        dec.base.hands[hand_idx].bs.curls[i] = curls[i];
+    }
+}
+
+// Fuuuuuck, we need debouncing, fuuuuuck, nooooo
+void a(everything_else_decider &dec, int hand_idx)
+{
+    // A is the "horns" gesture
+
+    float *curls = dec.base.hands[hand_idx].bs.curls;
+
+    float thresh_uncurled = -1.0f;
+    float thresh_curled = -2.0f;
+
+    bool good = curls[1] > thresh_uncurled && //
+                curls[2] < thresh_curled &&   //
+                curls[3] < thresh_curled &&   //
+                curls[4] > thresh_uncurled;
+    if (good)
+    {
+        dec.base.hands[hand_idx].bs.a = true;
+    }
+    else
+    {
+        dec.base.hands[hand_idx].bs.a = false;
+    }
+}
+
+void b(everything_else_decider &dec, int hand_idx)
+{
+    // B is: All fingers down except for pinky
+
+    float *curls = dec.base.hands[hand_idx].bs.curls;
+
+    float thresh_uncurled = -1.0f;
+    float thresh_curled = -2.0f;
+
+    bool good = curls[1] < thresh_curled && //
+                curls[2] < thresh_curled && //
+                curls[3] < thresh_curled && //
+                curls[4] > thresh_uncurled;
+    if (good)
+    {
+        dec.base.hands[hand_idx].bs.b = true;
+    }
+    else
+    {
+        dec.base.hands[hand_idx].bs.b = false;
+    }
 }
 
 void decide_everything_else(tracking_message &msg, xrt_pose head)
@@ -172,11 +233,16 @@ void decide_everything_else(tracking_message &msg, xrt_pose head)
         m_relation_chain_resolve(&xrc, &tmp);
 
         dec.hands_head_local[i] = tmp.pose;
+        curls(dec, i);
+        a(dec, i);
+        b(dec, i);
     }
 
-    thumbstick(dec.hands_head_local[0], dec.hands_head_local[1], dec.base.hands[0].bs.thumbstick_y, dec.base.hands[0].bs.thumbstick_gesture);
-    thumbstick_turn(dec.hands_head_local[1], dec.hands_head_local[0], dec.base.hands[1].bs.thumbstick_x, dec.base.hands[1].bs.thumbstick_gesture);
-
+    if (msg.hands[0].tracked && msg.hands[1].tracked)
+    {
+        thumbstick(dec.hands_head_local[0], dec.hands_head_local[1], dec.base.hands[0].bs.thumbstick_y, dec.base.hands[0].bs.thumbstick_gesture);
+        thumbstick_turn(dec.hands_head_local[1], dec.hands_head_local[0], dec.base.hands[1].bs.thumbstick_x, dec.base.hands[1].bs.thumbstick_gesture);
+    }
     // meow_printf("%f", quat_difference(dec.hands_head_local[0].orientation, up_pose));
     // meow_printf("%f", quat_difference(up_pose_2, up_pose));
 
