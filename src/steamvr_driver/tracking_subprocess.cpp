@@ -229,9 +229,9 @@ void hjs2_to_tracking_message(subprocess_state &state, xrt_hand_joint_set sets[2
             continue;
         }
 
-        bool &pinch = state.bs[hand_idx].pinch;
-        trigger_decide(set, &pinch);
-        msg.hands[hand_idx].trigger = pinch;
+        bool &trigger = state.bs[hand_idx].trigger;
+        trigger_decide(set, &trigger);
+        msg.hands[hand_idx].trigger = trigger;
 
         xrt_space_relation wrist = set.values.hand_joint_set_default[XRT_HAND_JOINT_WRIST].relation;
         xrt_space_relation index_pxm = set.values.hand_joint_set_default[XRT_HAND_JOINT_INDEX_PROXIMAL].relation;
@@ -445,6 +445,16 @@ int main(int argc, char **argv)
     u_var_add_root(&state, "SteamVR driver!", 0);
 
     u_var_add_bool(&state, &state.running, "Running");
+
+    u_var_add_bool(&state, &state.bs[0].a, "left.a");
+    u_var_add_bool(&state, &state.bs[0].b, "left.b");
+    u_var_add_bool(&state, &state.bs[0].trigger, "left.trigger");
+    u_var_add_f32(&state, &state.bs[0].forward, "left.forward");
+
+    u_var_add_bool(&state, &state.bs[1].a, "right.a");
+    u_var_add_bool(&state, &state.bs[1].b, "right.b");
+    u_var_add_bool(&state, &state.bs[1].trigger, "right.trigger");
+    u_var_add_f32(&state, &state.bs[1].forward, "right.forward");
 
     while (state.running)
     {
