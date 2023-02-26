@@ -15,7 +15,12 @@ if(XRT_HAVE_SDL2)
 endif()
 
 
-add_executable(tracking_subprocess tracking_subprocess.cpp)
+add_executable(tracking_subprocess tracking_subprocess.cpp
+
+get_finger_curls.hpp get_finger_curls.cpp
+everything_else_decider.hpp everything_else_decider.cpp
+
+)
 
 target_link_libraries(tracking_subprocess PRIVATE 
 ${OpenCV_LIBRARIES}
@@ -35,7 +40,6 @@ meow_util)
 add_library(driver_mercury MODULE driver_factory.cpp 
                 device_provider.h device_provider.cpp
                 mercury_device.h mercury_device.cpp
-                get_finger_curls.hpp get_finger_curls.cpp
                 util/win_utils.h util/win_utils.cpp
                 util/path_utils.h util/path_utils.cpp
                 util/bones.h util/bones.cpp)

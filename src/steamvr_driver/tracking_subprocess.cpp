@@ -28,6 +28,7 @@
 
 #include "pinch_decider.hpp"
 #include "math/m_filter_one_euro.h"
+#include "everything_else_decider.hpp"
 
 #define meow_printf U_SP_LOG_E
 
@@ -324,6 +325,9 @@ void hjs2_to_tracking_message(subprocess_state &state, xrt_hand_joint_set sets[2
             msg.hands[hand_idx].fingers_relative[i] = tmp.pose;
         }
     }
+    decide_everything_else(msg, attached_head);
+    state.bs[0] = msg.hands[0].bs;
+    state.bs[1] = msg.hands[1].bs;
 }
 
 bool check_vrserver_alive(subprocess_state &state)

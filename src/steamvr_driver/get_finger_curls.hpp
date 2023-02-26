@@ -1,11 +1,9 @@
 // !!!!!THIS WAS COPIED FROM MERCURY_TRAIN!!!!! Please at some point put this into Monado, or something.
 
 #pragma once
-#include "math/m_eigen_interop.hpp"
-#include "util/u_logging.h"
+#include <array>
 #include "xrt/xrt_defines.h"
 
-using namespace xrt::auxiliary::math;
 
 // note! in mercury_train, the 0th pose is the elbow, the 1st is the wrist, and the rest is the same.
 // This is fine for us (?) because we didn't care about XRT_HAND_JOINT_PALM ever anyhow

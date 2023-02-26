@@ -1,7 +1,13 @@
 // !!!!!THIS WAS COPIED FROM MERCURY_TRAIN!!!!! Please at some point put this into Monado, or something.
 
+// !!!!NOTE!!!! THUMB IS STILL BROKEN FOR RIGHT HANDS! THIS DOESN'T MATTER BECAUSE WE DON'T USE THUMB!
+
 #pragma once
 #include "get_finger_curls.hpp"
+#include "math/m_eigen_interop.hpp"
+
+using namespace xrt::auxiliary::math;
+
 
 /*!
  * Converts a quaternion to XY-swing and Z-twist
@@ -42,7 +48,7 @@ curl_diff(const hand26 &gt, int start_idx, Eigen::Quaternionf last_orientation)
 
         float curl = quat2curl(diff);
 
-        U_LOG_T("Pos %d joint %d curl %f", pos, i, curl);
+        //U_LOG_T("Pos %d joint %d curl %f", pos, i, curl);
         ret += curl;
 
         last_orientation = this_orientation;
@@ -59,7 +65,7 @@ finger_curl_sum(const hand26 &gt, int finger_idx)
 
     Eigen::Quaternionf last_orientation = map_quat(gt[0].orientation); // wrist joint
 
-    U_LOG_T("Finger %d", finger_idx);
+    //U_LOG_T("Finger %d", finger_idx);
 
     return curl_diff(gt, root, last_orientation);
 }
@@ -78,7 +84,7 @@ thumb_curl_sum(const hand26 &gt)
     // Thumb part!
     Eigen::Quaternionf last_orientation = wrist * thumb_hidden_orientation;
 
-    // U_LOG_T("Thumb!");
+    // //U_LOG_T("Thumb!");
 
     float ret = 0.0f;
 
@@ -91,7 +97,7 @@ thumb_curl_sum(const hand26 &gt)
 
         float curl = quat2curl(diff);
 
-        // U_LOG_T("Pos %d joint %d curl %f", pos, i, curl);
+        // //U_LOG_T("Pos %d joint %d curl %f", pos, i, curl);
         ret += curl;
 
         last_orientation = this_orientation;
