@@ -275,6 +275,7 @@ void DeviceProvider::HandTrackingThread()
             // }
             if (WSAGetLastError() == WSAECONNRESET && TRY_RESTART)
             {
+                os_nanosleep(500 * U_TIME_1MS_IN_NS);
                 if (!StartSubprocess())
                 {
                     return;
@@ -343,13 +344,13 @@ void DeviceProvider::HandTrackingThread()
             prev_delays_.push_back(delay);
 
             // 1 frametime so that we always have a frame to interpolate extra with
-            max_delay += float(U_TIME_1S_IN_NS * 1) / (54.0f);
+            max_delay += int64_t(float(U_TIME_1S_IN_NS * 1) / (54.0f));
 
             // [HACK] Extra time because I feel like it.
             // This should be fixed by tuning the euro filter to go *up* faster.
             max_delay += U_TIME_1MS_IN_NS * 10;
 
-            float delay_f = max_delay;
+            float delay_f = float(max_delay);
 
             m_filter_euro_f32_run(&delay_filter_, message.camera_timestamp, &delay_f, &ht_delay_);
         }
