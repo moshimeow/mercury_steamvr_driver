@@ -6,6 +6,18 @@
 // We're not using xrt_hand_joint_set because it has relation flags, acceleration, etc.
 // which take up space, and we're sending these messages at 54Hz.
 #pragma pack(push, 1)
+
+
+struct emulated_buttons_state
+{
+    bool a = false;
+    bool b = false;
+    bool pinch = false;
+
+    float forward = 0;
+};
+
+
 struct tracking_message_hand
 {
     bool tracked;

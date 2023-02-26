@@ -58,15 +58,6 @@
 
 namespace xat = xrt::auxiliary::tracking;
 
-struct emulated_buttons_state
-{
-    bool a = false;
-    bool b = false;
-    bool pinch = false;
-
-    float forward = 0;
-};
-
 struct subprocess_state
 {
     const char *port;
