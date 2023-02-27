@@ -145,3 +145,7 @@ It's probably fine to update the hand skeleton at say 500Hz, in the same loop as
 //     CloseHandle(snapshot);
 // }
 ```
+
+
+
+B and trigger on both sides makes safe mode
