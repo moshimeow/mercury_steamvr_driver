@@ -81,6 +81,7 @@ struct subprocess_state
     struct m_filter_euro_quat quat_filters[2];
 
     struct emulated_buttons_state bs[2] = {};
+    bool use_wrist_pose;
 };
 
 std::string read_file(std::string_view path)
@@ -481,6 +482,8 @@ int main(int argc, char **argv)
     u_var_add_f32(&state, &state.bs[1].curls[3], "right.curls[3]");
     u_var_add_f32(&state, &state.bs[1].curls[4], "right.curls[4]");
 
+    u_var_add_bool(&state, &state.use_wrist_pose, "Use wrist pose instead of raycast pose");
+
     while (state.running)
     {
         if (!check_vrserver_alive(state))
@@ -562,6 +565,7 @@ int main(int argc, char **argv)
         meow_printf("Going to send!");
 
         message.sent_at_timestamp = os_monotonic_get_ns();
+        message.use_wrist_instead_of_raw = state.use_wrist_pose;
 
         iResult = send(state.connectSocket, (const char *)&message, TMSIZE, 0);
 

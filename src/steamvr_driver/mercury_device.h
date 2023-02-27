@@ -112,6 +112,8 @@ public:
 
     emulated_buttons_state buttons_state_;
 
+    bool use_wrist_instead_of_raycast_;
+
     // bool trigger_ = false;
 
 private:

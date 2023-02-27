@@ -45,13 +45,15 @@ struct tracking_message
     int64_t camera_timestamp;
     int64_t host_recieved_frame_timestamp;
     int64_t sent_at_timestamp;
+    bool use_wrist_instead_of_raw;
+    uint8_t _pad[3];
     tracking_message_hand hands[2];
 };
 
 #pragma pack(pop)
 
 #define TMSIZE sizeof(tracking_message)
-static_assert(sizeof(struct tracking_message) == 1676);
+static_assert(sizeof(struct tracking_message) == 1680);
 
 static_assert(sizeof(bool) == 1);
 

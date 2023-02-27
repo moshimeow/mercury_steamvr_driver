@@ -366,6 +366,9 @@ void DeviceProvider::HandTrackingThread()
         left_hand_->UpdateFakeControllerInput(message.hands[0].bs);
         right_hand_->UpdateFakeControllerInput(message.hands[1].bs);
 
+        left_hand_->use_wrist_instead_of_raycast_ = message.use_wrist_instead_of_raw;
+        right_hand_->use_wrist_instead_of_raycast_ = message.use_wrist_instead_of_raw;
+
 #ifdef TIMING_DEBUGGING
         timestamps_debug_ << std::to_string(message.camera_timestamp) << ", "
                           << std::to_string(message.host_recieved_frame_timestamp) << ", "

@@ -232,15 +232,33 @@ void MercuryHandDevice::UpdateWristPose(uint64_t timestamp)
 
     pose.qWorldFromDriverRotation = {1, 0, 0, 0};
 
-    pose.vecPosition[0] = raw_pose_in_global.pose.position.x;
-    pose.vecPosition[1] = raw_pose_in_global.pose.position.y;
-    pose.vecPosition[2] = raw_pose_in_global.pose.position.z;
+    if (use_wrist_instead_of_raycast_)
+    {
+        pose.vecPosition[0] = wrist_pose_in_global.pose.position.x;
+        pose.vecPosition[1] = wrist_pose_in_global.pose.position.y;
+        pose.vecPosition[2] = wrist_pose_in_global.pose.position.z;
 
-    convert_quaternion(raw_pose_in_global.pose.orientation, pose.qRotation);
+        convert_quaternion(wrist_pose_in_global.pose.orientation, pose.qRotation);
+    }
+    else
+    {
+        pose.vecPosition[0] = raw_pose_in_global.pose.position.x;
+        pose.vecPosition[1] = raw_pose_in_global.pose.position.y;
+        pose.vecPosition[2] = raw_pose_in_global.pose.position.z;
+
+        convert_quaternion(raw_pose_in_global.pose.orientation, pose.qRotation);
+    }
 
 // Update the fake controller pose
 update:
-    UpdateFingerPose(&this->hand_joint_set_wrist_local, raw_pose_in_global.pose, wrist_pose_in_global.pose);
+    if (use_wrist_instead_of_raycast_)
+    {
+        UpdateFingerPose(&this->hand_joint_set_wrist_local, wrist_pose_in_global.pose, wrist_pose_in_global.pose);
+    }
+    else
+    {
+        UpdateFingerPose(&this->hand_joint_set_wrist_local, raw_pose_in_global.pose, wrist_pose_in_global.pose);
+    }
     vr::VRServerDriverHost()->TrackedDevicePoseUpdated(device_id_, pose, sizeof(vr::DriverPose_t));
 }
 
