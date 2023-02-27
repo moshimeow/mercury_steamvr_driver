@@ -80,6 +80,14 @@ struct subprocess_state
     struct m_filter_euro_vec3 vector_filters[2];
     struct m_filter_euro_quat quat_filters[2];
 
+    bool grip_instead_of_aim = false;
+    bool invert;
+
+    xrt_vec3 aim_orientation[2];
+
+    xrt_vec3 grip_orientation[2];
+    xrt_vec3 grip_position[2];
+
     struct emulated_buttons_state bs[2] = {};
 };
 
@@ -271,46 +279,100 @@ void hjs2_to_tracking_message(subprocess_state &state, xrt_hand_joint_set sets[2
         }
         xrt_hand_joint_set &set = sets[hand_idx];
 
-        xrt_pose ap_ = aim_pose(hand_idx, wrist_global[hand_idx], index_pxm_global[hand_idx], tracked[!hand_idx] ? &wrist_global[!hand_idx] : NULL, attached_head);
-
         xrt_pose ap;
 
-        if (msg.hands[hand_idx].bs.trigger)
+        if (state.grip_instead_of_aim)
         {
-            // Too low
-            // const float mul = 0.000001;
+            xrt_vec3 hello = {};
+            xrt_vec3 &grip_position = state.grip_position[hand_idx];
 
-            // Also too low
-            // const float mul = 0.0001;
+            hello.x = state.grip_orientation[hand_idx].x * (3.14 / 180);
+            hello.y = state.grip_orientation[hand_idx].y * (3.14 / 180);
+            hello.z = state.grip_orientation[hand_idx].z * (3.14 / 180);
 
-            // Also too low - these all feel the same and result in ~no movement
-            // const float mul = 0.001;
+            xrt_pose meow = {};
+            meow.position.x = grip_position.x;
+            meow.position.y = grip_position.y;
+            meow.position.z = grip_position.z;
 
-            // This does result in some movement
-            // const float mul = 0.01;
+            math_quat_from_euler_angles(&hello, &meow.orientation);
 
-            // OK this is good and feels purposeful and generally helps interactions
-            const float mul = 0.05;
+            struct xrt_relation_chain xrc = {};
+            xrt_space_relation tmp = {};
+            if (state.invert)
+            {
+                m_relation_chain_push_inverted_pose_if_not_identity(&xrc, &meow);
+            }
+            else
+            {
 
-            state.quat_filters[hand_idx].base.fc_min = FCMIN_QUAT * mul;
-            state.quat_filters[hand_idx].base.fc_min_d = FCMIN_D_QUAT * mul;
-            state.quat_filters[hand_idx].base.beta = OUR_BETA_PINCHED_QUAT;
+                xrt_pose meow2 = {};
+                meow2.orientation = XRT_QUAT_IDENTITY;
+                meow2.position.x = grip_position.x;
+                meow2.position.y = grip_position.y;
+                meow2.position.z = grip_position.z;
+                m_relation_chain_push_pose(&xrc, &meow2);
 
-            state.vector_filters[hand_idx].base.fc_min = FCMIN * mul;
-            state.vector_filters[hand_idx].base.fc_min_d = FCMIN_D * mul;
-            state.quat_filters[hand_idx].base.beta = OUR_BETA_PINCHED;
+                m_relation_chain_push_pose(&xrc, &meow);
+            }
+            m_relation_chain_push_pose(&xrc, &wrist_global[hand_idx]);
+            // m_relation_chain_push_inverted_pose_if_not_identity(&xrc, &wrist_global[hand_idx]);
+            m_relation_chain_resolve(&xrc, &tmp);
+            ap = tmp.pose;
         }
         else
         {
-            state.quat_filters[hand_idx].base.fc_min = FCMIN_QUAT;
-            state.quat_filters[hand_idx].base.fc_min_d = FCMIN_D_QUAT;
+            xrt_pose ap_ = aim_pose(hand_idx, wrist_global[hand_idx], index_pxm_global[hand_idx], tracked[!hand_idx] ? &wrist_global[!hand_idx] : NULL, attached_head);
 
-            state.vector_filters[hand_idx].base.fc_min = FCMIN;
-            state.vector_filters[hand_idx].base.fc_min_d = FCMIN_D;
+            xrt_vec3 meow = m_vec3_mul_scalar(state.aim_orientation[hand_idx], 3.14f / 180.0f);
+
+            // if (hand_idx == 1) {
+            //     meow.y *= -1;
+            // }
+
+            xrt_quat add;
+
+            math_quat_from_euler_angles(&meow, &add);
+
+            math_quat_rotate(&ap_.orientation, &add, &ap_.orientation);
+
+            if (msg.hands[hand_idx].bs.trigger)
+            {
+                // Too low
+                // const float mul = 0.000001;
+
+                // Also too low
+                // const float mul = 0.0001;
+
+                // Also too low - these all feel the same and result in ~no movement
+                // const float mul = 0.001;
+
+                // This does result in some movement
+                // const float mul = 0.01;
+
+                // OK this is good and feels purposeful and generally helps interactions
+                const float mul = 0.05;
+
+                state.quat_filters[hand_idx].base.fc_min = FCMIN_QUAT * mul;
+                state.quat_filters[hand_idx].base.fc_min_d = FCMIN_D_QUAT * mul;
+                state.quat_filters[hand_idx].base.beta = OUR_BETA_PINCHED_QUAT;
+
+                state.vector_filters[hand_idx].base.fc_min = FCMIN * mul;
+                state.vector_filters[hand_idx].base.fc_min_d = FCMIN_D * mul;
+                state.quat_filters[hand_idx].base.beta = OUR_BETA_PINCHED;
+            }
+            else
+            {
+                state.quat_filters[hand_idx].base.fc_min = FCMIN_QUAT;
+                state.quat_filters[hand_idx].base.fc_min_d = FCMIN_D_QUAT;
+
+                state.vector_filters[hand_idx].base.fc_min = FCMIN;
+                state.vector_filters[hand_idx].base.fc_min_d = FCMIN_D;
+            }
+
+            m_filter_euro_quat_run(&state.quat_filters[hand_idx], tracking_ts, &ap_.orientation, &ap.orientation);
+            m_filter_euro_vec3_run(&state.vector_filters[hand_idx], tracking_ts, &ap_.position, &ap.position);
         }
-
-        m_filter_euro_quat_run(&state.quat_filters[hand_idx], tracking_ts, &ap_.orientation, &ap.orientation);
-        m_filter_euro_vec3_run(&state.vector_filters[hand_idx], tracking_ts, &ap_.position, &ap.position);
 
         msg.hands[hand_idx].pose_raw = ap;
         msg.hands[hand_idx].wrist = wrist_global[hand_idx];
@@ -462,11 +524,32 @@ int main(int argc, char **argv)
     u_var_add_f32(&state, &state.bs[0].curls[3], "left.curls[3]");
     u_var_add_f32(&state, &state.bs[0].curls[4], "left.curls[4]");
 
-
-        u_var_add_bool(&state, &dgs.curled[0][0], "left.curlsed[1]");
+    u_var_add_bool(&state, &dgs.curled[0][0], "left.curlsed[1]");
     u_var_add_bool(&state, &dgs.curled[0][1], "left.curlsed[2]");
     u_var_add_bool(&state, &dgs.curled[0][2], "left.curlsed[3]");
     u_var_add_bool(&state, &dgs.curled[0][3], "left.curlsed[4]");
+
+    state.grip_instead_of_aim = true;
+
+    state.grip_orientation[0] = {60, 4, -90};
+    state.grip_position[0] = {0.04, 0.01, -0.085};
+
+    state.grip_orientation[1] = {60, -4, 90};
+    state.grip_position[1] = {-0.04, 0.01, -0.085};
+
+    state.aim_orientation[0] = {40, 15, 0};
+    state.aim_orientation[1] = {40, -15, 0};
+
+    u_var_add_vec3_f32(&state, &state.aim_orientation[0], "aim_orientation[0]");
+
+    u_var_add_vec3_f32(&state, &state.grip_orientation[0], "grip_orientation[0]");
+    u_var_add_vec3_f32(&state, &state.grip_orientation[1], "grip_orientation[1]");
+
+    u_var_add_vec3_f32(&state, &state.grip_position[0], "grip_position[0]");
+    u_var_add_vec3_f32(&state, &state.grip_position[1], "grip_position[1]");
+
+    u_var_add_bool(&state, &state.grip_instead_of_aim, "grip instead of aim");
+    u_var_add_bool(&state, &state.invert, "invert");
 
     u_var_add_bool(&state, &state.bs[1].a, "right.a");
     u_var_add_bool(&state, &state.bs[1].b, "right.b");
