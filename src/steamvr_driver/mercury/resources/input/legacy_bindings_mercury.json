@@ -589,9 +589,9 @@
           ]
        }
     },
-    "controller_type" : "knuckles",
-    "description" : "Default binding values for legacy apps using the Index Controller",
-    "name" : "Index Controller Legacy Defaults",
+    "controller_type" : "mercury",
+    "description" : "Default binding values for legacy apps using Mercury hand tracking",
+    "name" : "Mercury Hand Tracking Legacy Defaults",
     "options" : {
        "mirror_actions" : false
     },

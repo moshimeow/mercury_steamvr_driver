@@ -1,0 +1,121 @@
+{
+	"jsonid": "input_profile",
+	"controller_type" : "mercury",
+	"device_class" : "TrackedDeviceClass_Controller",
+	"resource_root" : "mercury",
+	"driver_name" : "mercury",
+    "legacy_binding" :  "{mercury}/input/legacy_bindings_mercury.json",
+	"input_bindingui_mode" : "controller_handed",
+	"commented_out":{
+	"default_bindings": [
+		{
+			"app_key": "openvr.tool.steamvr_environments",
+			"binding_url": "bindings/steamvr_home.json"
+		}
+	]},
+	"should_show_binding_errors": true,
+	"input_source" :
+	{
+		"/pose/raw" : 
+		{
+			"type" : "pose",
+			"binding_image_point" : [ 5, 35 ]
+		},
+		"/pose/tip" : {
+			"type" : "pose",
+			"binding_image_point" : [ 5, 35 ]
+		},
+		"/pose/base" : {
+			"type" : "pose",
+			"binding_image_point" : [ 65, 136 ]
+		},
+		  "/pose/handgrip" : {
+			"type" : "pose",
+			"binding_image_point" : [ 56, 95 ]
+		},
+
+		"/input/skeleton/left" : 
+		{
+			"type" : "skeleton",
+			"skeleton": "/skeleton/hand/left",
+			"side" : "left",
+			"binding_image_point" : [ 5, 35 ]
+		},
+		"/input/skeleton/right" : 
+		{
+			"type" : "skeleton",
+			"skeleton": "/skeleton/hand/right",
+			"side" : "right",
+			"binding_image_point" : [ 5, 35 ]
+		},
+
+
+		"/input/system" : {
+			"type" : "button",
+			"click" : true,
+			"touch" : true,
+			"binding_image_point" : [ 34,45 ],
+			"order" : 1
+		  },
+		  "/input/a" : {
+			"type" : "button",
+			"click" : true,
+			"touch" : true,
+			"binding_image_point" : [ 26, 42 ],
+			"order" : 6
+		  },
+		  "/input/b" : {
+			"type" : "button",
+			"click" : true,
+			"touch" : true,
+			"binding_image_point" : [ 18, 37  ],
+			"order" : 5
+		  },
+		  "/input/trigger" : {
+			"type" : "trigger",
+			"click" : true,
+			"touch" : true,
+			"value" : true,
+			"binding_image_point" : [ 11, 60 ],
+			"order" : 2
+		  },
+		  "/input/thumbstick" : {
+			"type" : "joystick",
+			"click" : true,
+			"touch" : true,
+			"binding_image_point" : [ 31, 26 ],
+			"order" : 4
+		  },
+
+		  "/input/finger/index" : {
+			"type" : "trigger",
+			"visibility" : "InputValueVisibility_AvailableButHidden",
+			"binding_image_point" : [ 56, 86 ],
+			"order" : 100
+		  },
+		  "/input/finger/middle" : {
+			"type" : "trigger",
+			"visibility" : "InputValueVisibility_AvailableButHidden",
+			"binding_image_point" : [ 56, 86 ],
+			"order" : 101
+		  },
+		  "/input/finger/ring" : {
+			"type" : "trigger",
+			"visibility" : "InputValueVisibility_AvailableButHidden",
+			"binding_image_point" : [ 56, 86 ],
+			"order" : 102
+		  },
+		  "/input/finger/pinky" : {
+			"type" : "trigger",
+			"visibility" : "InputValueVisibility_AvailableButHidden",
+			"binding_image_point" : [ 56, 86 ],
+			"order" : 103
+		  }
+	},
+
+	"options": {
+		"simulated_controller_type": "knuckles",
+		"simulate_rendermodel": true
+	},
+	"compatibility_mode_controller_type": "knuckles"
+}

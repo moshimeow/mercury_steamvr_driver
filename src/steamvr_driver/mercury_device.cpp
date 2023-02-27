@@ -38,14 +38,14 @@ vr::EVRInitError MercuryHandDevice::Activate(uint32_t unObjectId)
                                                         : "collabora/mercury_hand_r");*/
     vr::VRProperties()->SetStringProperty(props, vr::Prop_ResourceRoot_String, "mercury");
     vr::VRProperties()->SetStringProperty(props, vr::Prop_RenderModelName_String, !IsLeftHand() ? "{mercury}mercury_right" : "{mercury}mercury_left");
-    vr::VRProperties()->SetStringProperty(props, vr::Prop_ControllerType_String, "knuckles");
-    vr::VRProperties()->SetStringProperty(props, vr::Prop_ManufacturerName_String, "Valve");
+    vr::VRProperties()->SetStringProperty(props, vr::Prop_ControllerType_String, "mercury");
+    vr::VRProperties()->SetStringProperty(props, vr::Prop_ManufacturerName_String, "Meow meow");
     vr::VRProperties()->SetStringProperty(props, vr::Prop_TrackingSystemName_String, "yeet");
 
     // we need to supply a controller profile so that bindings can work.
     // this path might be wrong. I checked the documentation though, and the docs say it is
     // using the right form.
-    vr::VRProperties()->SetStringProperty(props, vr::Prop_InputProfilePath_String, "{mercury}/resources/input/index_controller_profile.json");
+    vr::VRProperties()->SetStringProperty(props, vr::Prop_InputProfilePath_String, "{mercury}/resources/input/mercury_profile.json");
     // vr::VRProperties()->SetStringProperty(props, vr::Prop_RenderModelName_String, !IsLeftHand() ? "{mercury}valve_controller_knu_1_0_right" : "{mercury}valve_controller_knu_1_0_left");
 
     vr::VRDriverInput()->CreateSkeletonComponent(
