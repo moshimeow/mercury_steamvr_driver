@@ -223,6 +223,10 @@ void hjs2_to_tracking_message(subprocess_state &state, xrt_hand_joint_set sets[2
     xrt_pose wrist_global[2] = {};
     xrt_pose index_pxm_global[2] = {};
 
+    // msg.hands[0].bs = state.bs[0];
+    // msg.hands[1].bs = state.bs[1];
+    // state.bs[1] = msg.hands[1].bs;
+
     for (int hand_idx = 0; hand_idx < 2; hand_idx++)
     {
         xrt_hand_joint_set &set = sets[hand_idx];
@@ -299,24 +303,18 @@ void hjs2_to_tracking_message(subprocess_state &state, xrt_hand_joint_set sets[2
 
             struct xrt_relation_chain xrc = {};
             xrt_space_relation tmp = {};
-            if (state.invert)
-            {
-                m_relation_chain_push_inverted_pose_if_not_identity(&xrc, &meow);
-            }
-            else
-            {
 
-                xrt_pose meow2 = {};
-                meow2.orientation = XRT_QUAT_IDENTITY;
-                meow2.position.x = grip_position.x;
-                meow2.position.y = grip_position.y;
-                meow2.position.z = grip_position.z;
-                m_relation_chain_push_pose(&xrc, &meow2);
+            xrt_pose meow2 = {};
+            meow2.orientation = XRT_QUAT_IDENTITY;
+            meow2.position.x = grip_position.x;
+            meow2.position.y = grip_position.y;
+            meow2.position.z = grip_position.z;
 
-                m_relation_chain_push_pose(&xrc, &meow);
-            }
+            m_relation_chain_push_pose(&xrc, &meow2);
+
+            m_relation_chain_push_pose(&xrc, &meow);
+
             m_relation_chain_push_pose(&xrc, &wrist_global[hand_idx]);
-            // m_relation_chain_push_inverted_pose_if_not_identity(&xrc, &wrist_global[hand_idx]);
             m_relation_chain_resolve(&xrc, &tmp);
             ap = tmp.pose;
         }
@@ -325,10 +323,6 @@ void hjs2_to_tracking_message(subprocess_state &state, xrt_hand_joint_set sets[2
             xrt_pose ap_ = aim_pose(hand_idx, wrist_global[hand_idx], index_pxm_global[hand_idx], tracked[!hand_idx] ? &wrist_global[!hand_idx] : NULL, attached_head);
 
             xrt_vec3 meow = m_vec3_mul_scalar(state.aim_orientation[hand_idx], 3.14f / 180.0f);
-
-            // if (hand_idx == 1) {
-            //     meow.y *= -1;
-            // }
 
             xrt_quat add;
 
@@ -365,9 +359,11 @@ void hjs2_to_tracking_message(subprocess_state &state, xrt_hand_joint_set sets[2
             {
                 state.quat_filters[hand_idx].base.fc_min = FCMIN_QUAT;
                 state.quat_filters[hand_idx].base.fc_min_d = FCMIN_D_QUAT;
+                state.quat_filters[hand_idx].base.beta = OUR_BETA_QUAT;
 
                 state.vector_filters[hand_idx].base.fc_min = FCMIN;
                 state.vector_filters[hand_idx].base.fc_min_d = FCMIN_D;
+                state.quat_filters[hand_idx].base.beta = OUR_BETA;
             }
 
             m_filter_euro_quat_run(&state.quat_filters[hand_idx], tracking_ts, &ap_.orientation, &ap.orientation);
@@ -387,7 +383,7 @@ void hjs2_to_tracking_message(subprocess_state &state, xrt_hand_joint_set sets[2
             msg.hands[hand_idx].fingers_relative[i] = tmp.pose;
         }
     }
-    decide_everything_else(msg, attached_head);
+    decide_everything_else(msg, attached_head, state.grip_instead_of_aim);
     state.bs[0] = msg.hands[0].bs;
     state.bs[1] = msg.hands[1].bs;
 }

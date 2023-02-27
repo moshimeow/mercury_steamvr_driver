@@ -149,3 +149,6 @@ It's probably fine to update the hand skeleton at say 500Hz, in the same loop as
 
 
 B and trigger on both sides makes safe mode
+
+optimizations:
+* in tracking_subprocess: you really should squash the grip/aim offsets instead of converting them every frame.

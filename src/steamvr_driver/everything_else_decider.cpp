@@ -25,9 +25,10 @@ struct decider_global_state dgs;
 struct everything_else_decider
 {
     tracking_message &base;
+    bool &grip_instead_of_aim;
     xrt_pose hands_head_local[2];
 
-    everything_else_decider(tracking_message &msg) : base(msg) {}
+    everything_else_decider(tracking_message &msg, bool &grip_instead_of_aim) : base(msg), grip_instead_of_aim(grip_instead_of_aim) {}
 };
 
 inline static xrt_quat thumbstick_left_hand_up_pose()
@@ -76,6 +77,28 @@ inline xrt_quat thumbstick_left_hand_right_pose()
 {
     xrt_quat up_pose;
     up_pose.w = 0.5;
+    up_pose.x = -0.5;
+    up_pose.y = -0.5;
+    up_pose.z = 0.5;
+
+    return up_pose;
+}
+
+inline xrt_quat swap_input_ray_left_pose()
+{
+    xrt_quat up_pose;
+    up_pose.w = 0.5;
+    up_pose.x = 0.5;
+    up_pose.y = -0.5;
+    up_pose.z = 0.5;
+
+    return up_pose;
+}
+
+inline xrt_quat swap_input_ray_right_pose()
+{
+    xrt_quat up_pose;
+    up_pose.w = -0.5;
     up_pose.x = -0.5;
     up_pose.y = -0.5;
     up_pose.z = 0.5;
@@ -204,6 +227,33 @@ undetected:
     thumbstick_gesture = false;
 }
 
+void try_set_gesture(bool in_val, bool &out_val)
+{
+    // If in_val is false, set out_val to false and be done.
+    if (!in_val)
+    {
+        out_val = false;
+        return;
+    }
+
+    int64_t time = os_monotonic_get_ns();
+
+    // If in_val is true but out_val is false, we're beginning a gesture and only want to actually begin it if it's been long enough since the last gesture
+    if (!out_val)
+    {
+        if ((time - dgs.last_gesture_active_time) < MAX_TIME_BETWEEN_GESTURES)
+        {
+            return;
+        }
+        out_val = in_val;
+    }
+
+    // If out_val and in_val are both true, we're in the middle of a gesture.
+    // We don't need to update the gesture value since it's already correct (I think? This stays constant per frame, right? Yes, now it does.)
+
+    dgs.last_gesture_active_time = time;
+}
+
 void curls(everything_else_decider &dec, int hand_idx)
 {
     hand26 hand;
@@ -229,7 +279,6 @@ void curls(everything_else_decider &dec, int hand_idx)
     }
 }
 
-// Fuuuuuck, we need debouncing, fuuuuuck, nooooo
 void a(everything_else_decider &dec, int hand_idx)
 {
     // A is the "horns" gesture
@@ -238,33 +287,19 @@ void a(everything_else_decider &dec, int hand_idx)
                 dgs.curled[hand_idx][1] &&  //
                 dgs.curled[hand_idx][2] &&  //
                 !dgs.curled[hand_idx][3];
-    if (good)
-    {
-        dec.base.hands[hand_idx].bs.a = true;
-    }
-    else
-    {
-        dec.base.hands[hand_idx].bs.a = false;
-    }
+
+    try_set_gesture(good, dec.base.hands[hand_idx].bs.a);
 }
 
 void b(everything_else_decider &dec, int hand_idx)
 {
-    // B is: All fingers down except for pinky
+    // B is: All fingers down except for pinky. The "call me" gesture.
 
     bool good = dgs.curled[hand_idx][0] && //
                 dgs.curled[hand_idx][1] && //
                 dgs.curled[hand_idx][2] && //
                 !dgs.curled[hand_idx][3];
-
-    if (good)
-    {
-        dec.base.hands[hand_idx].bs.b = true;
-    }
-    else
-    {
-        dec.base.hands[hand_idx].bs.b = false;
-    }
+    try_set_gesture(good, dec.base.hands[hand_idx].bs.b);
 }
 
 void system_button(everything_else_decider &dec)
@@ -281,24 +316,43 @@ void system_button(everything_else_decider &dec)
         good = good && dgs.curled[hand_idx][3];
     }
 
-    if (good)
+    try_set_gesture(good, dec.base.hands[0].bs.system);
+}
+
+void swap_grip_instead_of_aim(everything_else_decider &dec)
+{
+    bool good = false;
+    if (both_hands_good(dec.hands_head_local[0], dec.hands_head_local[1], swap_input_ray_left_pose(), swap_input_ray_right_pose()))
     {
-        dec.base.hands[0].bs.system = true;
+        good = true;
+
+        for (int hand_idx = 0; hand_idx < 2; hand_idx++)
+        {
+            good = good && dgs.curled[hand_idx][0];
+            good = good && dgs.curled[hand_idx][1];
+            good = good && dgs.curled[hand_idx][2];
+            good = good && dgs.curled[hand_idx][3];
+        }
     }
-    else
+
+    bool before_state = dgs.switch_tracking_gesture;
+
+    try_set_gesture(good, dgs.switch_tracking_gesture);
+
+    if (!before_state && dgs.switch_tracking_gesture)
     {
-        dec.base.hands[0].bs.system = false;
+        dec.grip_instead_of_aim = !dec.grip_instead_of_aim;
     }
 }
 
-void decide_everything_else(tracking_message &msg, xrt_pose head)
+void decide_everything_else(tracking_message &msg, xrt_pose head, bool &grip_instead_of_aim)
 {
 
     // left: 0.869860 0.472481 -0.077124 -0.118981,
 
     xrt_quat up_pose = thumbstick_left_hand_up_pose();
 
-    everything_else_decider dec(msg);
+    everything_else_decider dec(msg, grip_instead_of_aim);
 
     for (int i = 0; i < 2; i++)
     {
@@ -333,6 +387,7 @@ void decide_everything_else(tracking_message &msg, xrt_pose head)
     }
 
     system_button(dec);
+    swap_grip_instead_of_aim(dec);
 
     // meow_printf("%f", quat_difference(dec.hands_head_local[0].orientation, up_pose));
     // meow_printf("%f", quat_difference(up_pose_2, up_pose));
@@ -340,6 +395,6 @@ void decide_everything_else(tracking_message &msg, xrt_pose head)
     // meow_printf("%f %f %f %f, %f %f %f %f", dec.hands_head_local[0].orientation.w, dec.hands_head_local[0].orientation.x, dec.hands_head_local[0].orientation.y, dec.hands_head_local[0].orientation.z,
     //             up_pose_2.w, up_pose_2.x, up_pose_2.y, up_pose_2.z);
 
-    // meow_printf("%f %f %f %f, %f %f %f %f", dec.hands_head_local[0].orientation.w, dec.hands_head_local[0].orientation.x, dec.hands_head_local[0].orientation.y, dec.hands_head_local[0].orientation.z,
-    //             dec.hands_head_local[1].orientation.w, dec.hands_head_local[1].orientation.x, dec.hands_head_local[1].orientation.y, dec.hands_head_local[1].orientation.z);
+    meow_printf("%f %f %f %f, %f %f %f %f", dec.hands_head_local[0].orientation.w, dec.hands_head_local[0].orientation.x, dec.hands_head_local[0].orientation.y, dec.hands_head_local[0].orientation.z,
+                dec.hands_head_local[1].orientation.w, dec.hands_head_local[1].orientation.x, dec.hands_head_local[1].orientation.y, dec.hands_head_local[1].orientation.z);
 }
