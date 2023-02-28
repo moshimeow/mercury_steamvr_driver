@@ -12,6 +12,7 @@
 #include <string>
 
 #include "openvr.h"
+#include "os/os_time.h"
 
 
 
@@ -57,6 +58,9 @@ int main()
         if (cv::waitKey(1) == 'q') {
             break;
         }
+        // Hypothesis: SteamVR doesn't like us pulling more than one frame per frame.
+        // If we sleep for a really long time, will it work?
+        os_nanosleep(U_TIME_1S_IN_NS);
         i++;
     }
 
