@@ -14,8 +14,6 @@
 #include "openvr.h"
 #include "os/os_time.h"
 
-
-
 int main()
 {
     vr::IVRSystem *vr_system;
@@ -34,33 +32,62 @@ int main()
     printf("AcquireVideoStreamingService error is %s\n", camera->GetCameraErrorNameFromEnum(err));
 
     int i = 0;
+    uint32_t last_sequence = 0;
+    int64_t last_time_asked = 0;
     while (true)
     {
+        int64_t now = os_monotonic_get_ns();
+        int64_t extra_time = (now - last_time_asked);
+
+        printf("extra %f ", (double)extra_time / U_TIME_1MS_IN_NS);
+
+        if (extra_time < (U_TIME_1MS_IN_NS * 18))
+        {
+
+            printf("Sleeping %f mseconds", (double)extra_time / U_TIME_1MS_IN_NS);
+            os_nanosleep(extra_time);
+
+            continue;
+        }
+        last_time_asked = now;
 
         cv::Mat mat_rgba(cv::Size(1920, 960), CV_8UC4);
 
-        vr::CameraVideoStreamFrameHeader_t header;
+        vr::CameraVideoStreamFrameHeader_t header = {};
 
-#if 0 
-        // vr::EVRTrackedCameraError err = camera->GetVideoStreamFrameBuffer(camera_handle, vr::VRTrackedCameraFrameType_Distorted, mat_rgba.data, 1920*960*4, &header, 1);
-#elif 1
         vr::EVRTrackedCameraError err = camera->GetVideoStreamFrameBuffer(camera_handle,
-                                                                          vr::VRTrackedCameraFrameType_Distorted, mat_rgba.data, 1920 * 960 * 4, &header, sizeof(vr::CameraVideoStreamFrameHeader_t));
-#else
-        vr::EVRTrackedCameraError err = camera->GetVideoStreamFrameBuffer(camera_handle,
-                                                                          vr::VRTrackedCameraFrameType_Distorted, mat_rgba.data, 1920 * 960 * 4, &header, i);
-#endif
+                                                                          vr::VRTrackedCameraFrameType_Distorted, NULL, 0, &header, sizeof(vr::CameraVideoStreamFrameHeader_t));
 
-    // VRTrackedCameraError_InvalidFrameHeaderVersion
-        printf("error is %s\n", camera->GetCameraErrorNameFromEnum(err));
+        printf("error (get sequence) is %s\n", camera->GetCameraErrorNameFromEnum(err));
+
+        if (err != vr::VRTrackedCameraError_None)
+        {
+            os_nanosleep(U_TIME_1MS_IN_NS * 10);
+            continue;
+        }
+        if (last_sequence == header.nFrameSequence)
+        {
+            printf("Continuing because sequence was the same (%u %u) \n", last_sequence, header.nFrameSequence);
+            os_nanosleep(U_TIME_1MS_IN_NS * 10);
+            continue;
+        }
+        last_sequence = header.nFrameSequence;
+
+        printf("sequence is %u\n", last_sequence);
+
+        err = camera->GetVideoStreamFrameBuffer(camera_handle,
+                                                vr::VRTrackedCameraFrameType_Distorted, mat_rgba.data, 1920 * 960 * 4, &header, sizeof(vr::CameraVideoStreamFrameHeader_t));
+
+        // VRTrackedCameraError_InvalidFrameHeaderVersion
+        printf("error (get frame) is %s\n", camera->GetCameraErrorNameFromEnum(err));
 
         cv::imshow("meow", mat_rgba);
-        if (cv::waitKey(1) == 'q') {
+
+        os_nanosleep(U_TIME_1MS_IN_NS * 10);
+        if (cv::waitKey(1) == 'q')
+        {
             break;
         }
-        // Hypothesis: SteamVR doesn't like us pulling more than one frame per frame.
-        // If we sleep for a really long time, will it work?
-        os_nanosleep(U_TIME_1S_IN_NS);
         i++;
     }
 
