@@ -161,8 +161,8 @@ int main()
             xat::FrameMat::wrapL8(mats_grayscale[i], &frames[i], params);
         }
 
-        xrt_sink_push_frame(async->sinks.left, frames[0]);
-        xrt_sink_push_frame(async->sinks.right, frames[1]);
+        xrt_sink_push_frame(async->sinks.cams[0], frames[0]);
+        xrt_sink_push_frame(async->sinks.cams[1], frames[1]);
 
         U_LOG_E("meow DIFF %f %f %f %f", time_diff_ms, time_now, time_camera, time_ratio);
     }
