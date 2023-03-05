@@ -11,6 +11,7 @@ target_link_libraries(
   meow_oxr_sdl2
   hand_async
   meow_util
+  target_instance_no_comp
   OpenVR::OpenVR
 )
 
@@ -28,6 +29,7 @@ target_link_libraries(
   meow_oxr_sdl2
   hand_async
   meow_util
+  target_instance_no_comp
   OpenVR::OpenVR
 )
 

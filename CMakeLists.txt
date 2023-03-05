@@ -31,7 +31,7 @@ set(XRT_HAVE_JPEG OFF) # No we don't
 set(ZLIB_FOUND OFF) # No we didn't
 
 set(XRT_FEATURE_COMPOSITOR_MAIN OFF) # we are not using this
-set(XRT_FEATURE_COMPOSITOR_NULL OFF) # we are not using this
+set(XRT_FEATURE_COMPOSITOR_NULL ON) # Whatever
 set(XRT_FEATURE_OPENXR OFF) # we need to replace this to pull together a different combination of modules
 set(XRT_FEATURE_IPC OFF)
 set(XRT_FEATURE_RENDERDOC OFF)
@@ -44,11 +44,11 @@ set(XRT_FEATURE_SLAM OFF) #Not using it
 set(XRT_FEATURE_CLIENT_DEBUG_GUI OFF)
 
 
-set(XRT_STANDALONE_VIVE_HELPER ON)
-set(XRT_FEATURE_STANDALONE_MERCURY_HANDTRACKING ON)
-set(XRT_FEATURE_PROBER OFF)
-set(XRT_BUILD_TARGET_CLI OFF)
-set(XRT_BUILD_TARGET_GUI OFF)
+set(XRT_MODULE_AUX_VIVE ON)
+set(XRT_MODULE_MERCURY_HANDTRACKING ON)
+# set(XRT_FEATURE_PROBER OFF)
+set(XRT_MODULE_MONADO_CLI OFF)
+set(XRT_MODULE_MONADO_GUI OFF)
 
 set(XRT_HAVE_D3D11 OFF)
 set(XRT_HAVE_D3D12 OFF)
@@ -96,8 +96,6 @@ option (FORCE_COLORED_OUTPUT "Always produce ANSI-colored output (GNU/Clang only
 set(ONNXRuntime_LIBRARY "${CMAKE_CURRENT_SOURCE_DIR}\\deps\\onnxruntime\\onnxruntime-win-x64-1.13.1\\lib\\onnxruntime.lib")
 set(ONNXRuntime_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}\\deps\\onnxruntime\\onnxruntime-win-x64-1.13.1\\include")
 
-add_subdirectory(monado)
-
 message("${CMAKE_CURRENT_SOURCE_DIR}")
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/")
@@ -121,6 +119,7 @@ find_package(
 	REQUIRED
 )
 
+add_subdirectory(monado)
 
 add_subdirectory(src)
 add_subdirectory(attic/cs_test)

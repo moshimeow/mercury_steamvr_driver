@@ -16,5 +16,6 @@ target_link_libraries(cs_test_subprocess PRIVATE
   meow_oxr_sdl2
   hand_async
   meow_util
+  target_instance_no_comp
 )
 

@@ -31,7 +31,9 @@ aux_vive
 t_ht_mercury
 meow_oxr_sdl2
 hand_async
-meow_util)
+meow_util
+target_instance_no_comp
+)
 
 
 
