@@ -117,6 +117,13 @@ u_sp_log(const char *file, int line, const char *func, enum u_sp_logging_level l
     XRT_PRINTF_FORMAT(5, 6);
 
 /*!
+ * Sets the path to the log file
+ *
+ * @param path Output file to log to
+*/
+void u_sp_log_set_file_path(char* path);
+
+/*!
  * Sets the logging sink, log is still passed on to the platform defined output
  * as well as the sink.
  *

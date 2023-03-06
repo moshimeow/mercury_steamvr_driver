@@ -59,6 +59,8 @@
 
 namespace xat = xrt::auxiliary::tracking;
 
+static char* rootpath = NULL;
+
 struct subprocess_state
 {
     const char *port;
@@ -174,8 +176,11 @@ bool setup_camera_and_ht(subprocess_state &state)
     info.views[0].boundary.circle.normalized_radius = 0.55;
     info.views[1].boundary.circle.normalized_radius = 0.55;
 
+    char rpath[512];
+    strcpy(rpath, rootpath);
+    strcat(rpath, "\\resources\\internal\\hand-tracking-models\\");
     state.sync =
-        t_hand_tracking_sync_mercury_create(calib, info, "C:\\dev\\mercury_steamvr_driver\\src\\steamvr_driver\\mercury\\resources\\internal\\hand-tracking-models\\");
+        t_hand_tracking_sync_mercury_create(calib, info, rpath);
 
     xrt_frame_context blah = {};
 
@@ -422,9 +427,9 @@ int main(int argc, char **argv)
 {
     meow_printf("Starting!");
 
-    if (argc < 3)
+    if (argc < 4)
     {
-        U_SP_LOG_E("Need a port and vive config location");
+        U_SP_LOG_E("Need a port, vive config location, and root path");
         meow_exit();
     }
     subprocess_state state = {};
@@ -433,6 +438,11 @@ int main(int argc, char **argv)
 
     state.port = argv[1];
     state.vive_config_location = argv[2];
+    rootpath = argv[3];
+
+    if (argc >= 5) {
+        u_sp_log_set_file_path(argv[4]);
+    }
 
     vr::EVRInitError error;
 

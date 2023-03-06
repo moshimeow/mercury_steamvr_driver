@@ -33,6 +33,11 @@ static u_sp_log_sink_func_t g_log_sink_func;
 static void *g_log_sink_data;
 
 static FILE* out_file = NULL;
+static char* out_file_path = NULL;
+
+void u_sp_log_set_file_path(char* path) {
+	out_file_path = path;
+}
 
 void
 u_sp_log_set_sink(u_sp_log_sink_func_t func, void *data)
@@ -50,10 +55,9 @@ u_sp_log_set_sink(u_sp_log_sink_func_t func, void *data)
 	}
 
 void handle_file() {
-    out_file = fopen("C:\\dev\\debug.txt", "w");
-    if (!out_file) {
-        abort();
-    }
+	if (out_file_path != NULL) {
+    	out_file = fopen(out_file_path, "w");
+	}
 }
 
 static int
@@ -101,7 +105,9 @@ u_sp_log(const char *file, int line, const char *func, enum u_sp_logging_level l
 	buf[printed++] = '\0';
 	OutputDebugStringA(buf);
 	fprintf(stderr, "%s", buf);
-    fprintf(out_file, "%s", buf);
-    fflush(out_file);
+	if (out_file) {
+    	fprintf(out_file, "%s", buf);
+    	fflush(out_file);
+	}
 }
 
