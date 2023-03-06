@@ -49,9 +49,11 @@ bool DeviceProvider::StartSubprocess()
     // maybe this is bad?
     // startupInfo.wShowWindow = true;
 
+    std::string rootpath;
     std::string subprocessPath = {};
+    GetDriverRootPath(rootpath);
     GetSubprocessPath(subprocessPath);
-    std::string commandLine = subprocessPath + " " + std::to_string(ntohs(localAddr.sin_port)) + " " + hmd_config;
+    std::string commandLine = subprocessPath + " " + std::to_string(ntohs(localAddr.sin_port)) + " \"" + hmd_config + "\" \"" + rootpath + "\" \"" + rootpath + "\\debug.txt\"";
     std::wstring wideCommandLine(commandLine.begin(), commandLine.end());
     DriverLog("Creating subprocess %s!", commandLine.c_str());
     if (!CreateProcess(NULL, commandLine.data(), NULL, NULL, FALSE, 0, NULL, NULL, &startupInfo, &processInfo))
