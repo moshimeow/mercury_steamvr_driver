@@ -347,7 +347,19 @@ void swap_grip_instead_of_aim(everything_else_decider &dec)
 
 void decide_everything_else(tracking_message &msg, xrt_pose head, bool &grip_instead_of_aim)
 {
-
+    #if 1
+    for (int hand = 0; hand < 2; hand++) {
+        msg.hands[hand].bs.a = false;
+        msg.hands[hand].bs.b = false;
+        msg.hands[hand].bs.grip = false;
+        msg.hands[hand].bs.system = false;
+        msg.hands[hand].bs.thumbstick_gesture = false;
+        msg.hands[hand].bs.thumbstick_x = 0.0f;
+        msg.hands[hand].bs.thumbstick_y = 0.0f;
+        
+    }
+    return;
+    #endif
     // left: 0.869860 0.472481 -0.077124 -0.118981,
 
     xrt_quat up_pose = thumbstick_left_hand_up_pose();
