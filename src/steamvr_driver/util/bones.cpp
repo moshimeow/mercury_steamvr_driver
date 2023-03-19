@@ -140,6 +140,10 @@ void HandJointSetToBoneTransform(struct xrt_hand_joint_set hand_joint_set,
 {
     // fill bone transforms with a default open pose to manipulate later
 
+    	for (int i = 0; i < OPENVR_BONE_COUNT; i++) {
+		out_bone_transforms[i] = role == vr::TrackedControllerRole_LeftHand ? leftOpenPose[i] : rightOpenPose[i];
+	}
+
     vr::VRBoneTransform_t ident = {{0.000000f, 0.000000f, 0.000000f, 1.000000f}, {1.000000f, 0.000000f, 0.000000f, 0.000000f}};
 
     for (int i : {0, 1})
