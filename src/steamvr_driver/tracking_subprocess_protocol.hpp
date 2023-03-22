@@ -33,7 +33,7 @@ struct tracking_message_hand
 {
     bool tracked;
     uint8_t _pad[3];
-    struct emulated_buttons_state bs;
+    // struct emulated_buttons_state bs;
     xrt_pose pose_raw;
     xrt_pose wrist;
     xrt_pose fingers_relative[26];

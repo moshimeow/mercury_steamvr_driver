@@ -3,6 +3,7 @@
 #include "driver_log.h"
 #include "math/m_relation_history.h"
 #include "os/os_time.h"
+#include <cmath>
 
 MercuryHandDevice::MercuryHandDevice(vr::ETrackedControllerRole role) : role_(role)
 {
@@ -160,6 +161,32 @@ void MercuryHandDevice::UpdateFingerPose(const xrt_hand_joint_set *joint_set_loc
     // Gets the finger poses relative to... the "root"
     // It's constantly up for debate what "the root" actually is
     HandJointSetToBoneTransform(*joint_set_local, this->bone_transforms_, role_, tmp.pose);
+
+    #if 1
+        for (int i = 0; i < OPENVR_BONE_COUNT; i++) {
+            bool is = false;
+
+            // is = is && !(this->bone_transforms_[i].position.v[0] != )
+            is = is || std::isnan(this->bone_transforms_[i].position.v[0]);
+            is = is || std::isnan(this->bone_transforms_[i].position.v[1]);
+            is = is || std::isnan(this->bone_transforms_[i].position.v[2]);
+            is = is || std::isnan(this->bone_transforms_[i].position.v[3]);
+            
+            is = is || std::isnan(this->bone_transforms_[i].orientation.w);
+            is = is || std::isnan(this->bone_transforms_[i].orientation.x);
+            is = is || std::isnan(this->bone_transforms_[i].orientation.y);
+            is = is || std::isnan(this->bone_transforms_[i].orientation.z);
+
+            if (is) {
+                DriverLog("Component of hand %d is nan", i);
+            }
+
+            // DriverLog("%d %f %f %f %f   %f %f %f %f", i, this->bone_transforms_[i].position.v[0], this[i].bone_transforms_[i].position.v[1], this[i].bone_transforms_[i].position.v[2], this[i].bone_transforms_[i].position.v[3], 
+            
+            
+            // this[i].bone_transforms_[i].orientation.w, this[i].bone_transforms_[i].orientation.x, this[i].bone_transforms_[i].orientation.y, this[i].bone_transforms_[i].orientation.z );
+        }
+    #endif
 
     // Sets the finger poses
     //! @todo: do we really need to update it twice?
