@@ -15,12 +15,7 @@ if(XRT_HAVE_SDL2)
 endif()
 
 
-add_executable(tracking_subprocess tracking_subprocess.cpp
-
-get_finger_curls.hpp get_finger_curls.cpp
-everything_else_decider.hpp everything_else_decider.cpp
-
-)
+add_executable(tracking_subprocess tracking_subprocess.cpp get_finger_curls.hpp get_finger_curls.cpp)
 
 target_link_libraries(tracking_subprocess PRIVATE 
 ${OpenCV_LIBRARIES}

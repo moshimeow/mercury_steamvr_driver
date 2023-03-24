@@ -12,9 +12,9 @@ $toolchainfile = Join-Path $vcpkgdir "scripts/buildsystems/vcpkg.cmake"
 $vcpkgexe = Join-Path $vcpkgdir "vcpkg.exe"
 
 # What? how does this make any freaking sense lol
-# c:\dev\vcpkg\vcpkg.exe install cjson:x64-windows eigen3:x64-windows wil:x64-windows pthreads:x64-windows glslang:x64-windows libusb:x64-windows hidapi:x64-windows
+# c:\dev\vcpkg\vcpkg.exe install cjson:x64-windows eigen3:x64-windows wil:x64-windows pthreads:x64-windows glslang:x64-windows libusb:x64-windows hidapi:x64-windows opencv:x64-windows
 
-
+c:\dev\vcpkg\vcpkg.exe install
 
 $env:PYTHONUTF8 = 1
 

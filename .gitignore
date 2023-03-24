@@ -7,3 +7,5 @@ build/
 deps/
 
 CMakeSettings.json
+
+vcpkg_installed/

@@ -28,7 +28,6 @@
 
 #include "pinch_decider.hpp"
 #include "math/m_filter_one_euro.h"
-#include "everything_else_decider.hpp"
 
 #define meow_printf U_SP_LOG_E
 
@@ -248,7 +247,7 @@ void hjs2_to_tracking_message(subprocess_state &state, xrt_hand_joint_set sets[2
         }
 
         trigger_decide(set, &state.bs[hand_idx].trigger);
-        msg.hands[hand_idx].bs = state.bs[hand_idx];
+        // msg.hands[hand_idx].bs = state.bs[hand_idx];
 
         xrt_space_relation wrist = set.values.hand_joint_set_default[XRT_HAND_JOINT_WRIST].relation;
         xrt_space_relation index_pxm = set.values.hand_joint_set_default[XRT_HAND_JOINT_INDEX_PROXIMAL].relation;
@@ -335,7 +334,7 @@ void hjs2_to_tracking_message(subprocess_state &state, xrt_hand_joint_set sets[2
 
             math_quat_rotate(&ap_.orientation, &add, &ap_.orientation);
 
-            if (msg.hands[hand_idx].bs.trigger)
+            if (false)
             {
                 // Too low
                 // const float mul = 0.000001;
@@ -388,9 +387,11 @@ void hjs2_to_tracking_message(subprocess_state &state, xrt_hand_joint_set sets[2
             msg.hands[hand_idx].fingers_relative[i] = tmp.pose;
         }
     }
-    decide_everything_else(msg, attached_head, state.grip_instead_of_aim);
-    state.bs[0] = msg.hands[0].bs;
-    state.bs[1] = msg.hands[1].bs;
+    // decide_everything_else(msg, attached_head, state.grip_instead_of_aim);
+    state.grip_instead_of_aim = false;
+
+    // state.bs[0] = msg.hands[0].bs;
+    // state.bs[1] = msg.hands[1].bs;
 }
 
 bool check_vrserver_alive(subprocess_state &state)
@@ -530,10 +531,10 @@ int main(int argc, char **argv)
     u_var_add_f32(&state, &state.bs[0].curls[3], "left.curls[3]");
     u_var_add_f32(&state, &state.bs[0].curls[4], "left.curls[4]");
 
-    u_var_add_bool(&state, &dgs.curled[0][0], "left.curlsed[1]");
-    u_var_add_bool(&state, &dgs.curled[0][1], "left.curlsed[2]");
-    u_var_add_bool(&state, &dgs.curled[0][2], "left.curlsed[3]");
-    u_var_add_bool(&state, &dgs.curled[0][3], "left.curlsed[4]");
+    // u_var_add_bool(&state, &dgs.curled[0][0], "left.curlsed[1]");
+    // u_var_add_bool(&state, &dgs.curled[0][1], "left.curlsed[2]");
+    // u_var_add_bool(&state, &dgs.curled[0][2], "left.curlsed[3]");
+    // u_var_add_bool(&state, &dgs.curled[0][3], "left.curlsed[4]");
 
     state.grip_instead_of_aim = true;
 
