@@ -180,7 +180,7 @@ void MercuryHandDevice::UpdateFingerPose(const xrt_hand_joint_set *joint_set_loc
 
         if (is)
         {
-            DriverLog("Component of hand %d is nan", i);
+            DriverLog("Component %d of hand %d is nan", !IsLeftHand(), i);
         }
 
         // DriverLog("%d %f %f %f %f   %f %f %f %f", i, this->bone_transforms_[i].position.v[0], this[i].bone_transforms_[i].position.v[1], this[i].bone_transforms_[i].position.v[2], this[i].bone_transforms_[i].position.v[3],

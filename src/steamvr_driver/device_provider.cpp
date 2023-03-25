@@ -310,7 +310,7 @@ void DeviceProvider::HandTrackingThread()
             continue;
         }
 
-        DriverLog(TM_FMT(message));
+        // DriverLog(TM_FMT(message));
 
         // if (message.is_just_keepalive)
         // {
@@ -416,6 +416,7 @@ void blah(const char *stuff, emulated_buttons_state *buttons_lr)
         // defaults
         bs.trigger = side["trigger"].asInt();
         bs.grip = side["grip"].asInt();
+        bs.system = side["system"].asInt();
 
         bs.thumbstick_gesture = side["thumbstick_active"].asBool();
 
@@ -429,23 +430,23 @@ void blah(const char *stuff, emulated_buttons_state *buttons_lr)
 void DeviceProvider::UnityInputCommunicationThread()
 {
     sockaddr_in localAddr;
-    SOCKET clientSocket;
-    SOCKET listenSocket;
+    SOCKET tClientSocket;
+    SOCKET tListenSocket;
 
     // Initialize Winsock
     WSADATA wsaData;
     int iResult = WSAStartup(MAKEWORD(2, 2), &wsaData);
     if (iResult != 0)
     {
-        printf("WSAStartup failed: %d", iResult);
+        DriverLog("Unity: WSAStartup failed: %d", iResult);
         return;
     }
 
     // Create a socket for the subprocess to connect to
-    listenSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-    if (listenSocket == INVALID_SOCKET)
+    tListenSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    if (tListenSocket == INVALID_SOCKET)
     {
-        printf("Error creating socket: %d", WSAGetLastError());
+        DriverLog("Unity: Error creating socket: %d", WSAGetLastError());
         WSACleanup();
         return;
     }
@@ -455,11 +456,11 @@ void DeviceProvider::UnityInputCommunicationThread()
     listenAddr.sin_family = AF_INET;
     listenAddr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
     listenAddr.sin_port = htons(12428);
-    iResult = bind(listenSocket, (sockaddr *)&listenAddr, sizeof(listenAddr));
+    iResult = bind(tListenSocket, (sockaddr *)&listenAddr, sizeof(listenAddr));
     if (iResult == SOCKET_ERROR)
     {
-        printf("Error binding socket: %d", WSAGetLastError());
-        closesocket(listenSocket);
+        DriverLog("Unity: Error binding socket: %d", WSAGetLastError());
+        closesocket(tListenSocket);
         WSACleanup();
         return;
     }
@@ -467,36 +468,36 @@ void DeviceProvider::UnityInputCommunicationThread()
     // Get the local address and port of the socket
     // sockaddr_in localAddr;
     int localAddrLen = sizeof(localAddr);
-    iResult = getsockname(listenSocket, (sockaddr *)&localAddr, &localAddrLen);
+    iResult = getsockname(tListenSocket, (sockaddr *)&localAddr, &localAddrLen);
     if (iResult == SOCKET_ERROR)
     {
-        printf("Error getting socket name: %d", WSAGetLastError());
-        closesocket(listenSocket);
+        DriverLog("Unity: Error getting socket name: %d", WSAGetLastError());
+        closesocket(tListenSocket);
         WSACleanup();
         return;
     }
 
     // SetupListen
 
-    printf("Server: Listening!\n");
+    DriverLog("Unity: Server: Listening!\n");
 
     // Listen for the subprocess to connect
-    iResult = listen(listenSocket, SOMAXCONN);
+    iResult = listen(tListenSocket, SOMAXCONN);
     if (iResult == SOCKET_ERROR)
     {
-        printf("Error listening for connection: %d", WSAGetLastError());
-        closesocket(listenSocket);
+        DriverLog("Unity: Error listening for connection: %d", WSAGetLastError());
+        closesocket(tListenSocket);
         WSACleanup();
         return;
     }
-    printf("Server: Accepting connection!\n");
+    DriverLog("Unity: Server: Accepting connection!\n");
 
     // Accept the connection
-    clientSocket = accept(listenSocket, NULL, NULL);
-    if (clientSocket == INVALID_SOCKET)
+    tClientSocket = accept(tListenSocket, NULL, NULL);
+    if (tClientSocket == INVALID_SOCKET)
     {
-        printf("Error accepting connection: %d", WSAGetLastError());
-        closesocket(listenSocket);
+        DriverLog("Unity: Error accepting connection: %d", WSAGetLastError());
+        closesocket(tListenSocket);
         WSACleanup();
         return;
     }
@@ -508,7 +509,59 @@ void DeviceProvider::UnityInputCommunicationThread()
 
         int iResult = 0;
         char message[2048] = {};
-        iResult = recv(clientSocket, message, 2047, 0);
+        iResult = recv(tClientSocket, message, 2047, 0);
+
+        // DriverLog("Unity: Result: %d", iResult);
+
+        // if (iResult == 0)
+        // {
+        //     DriverLog("Unity: Got packet with length zero?");
+        //     os_nanosleep(500LL * U_TIME_1MS_IN_NS);
+        //     continue;
+        // }
+
+        // This isn't really right but should do fine
+        if ((iResult == SOCKET_ERROR) && ((WSAGetLastError() == WSAECONNRESET) && TRY_RESTART) || (iResult == 0))
+        {
+            int last_error = WSAGetLastError();
+            // if (WSAGetLastError() == WSAETIMEDOUT)
+            // {
+            //     DriverLog("recv timed out! The subprocess was probably killed by you because you're compile-edit-debugging!");
+            //     break;
+            // }
+            os_nanosleep(5000L * U_TIME_1MS_IN_NS);
+
+            // close(tClientSocket);
+
+
+
+            // SetupListen
+
+            DriverLog("Unity: Server: Restarting and Listening!\n");
+
+            // Listen for the subprocess to connect
+            iResult = listen(tListenSocket, SOMAXCONN);
+            if (iResult == SOCKET_ERROR)
+            {
+                DriverLog("Unity: Restarting and Error listening for connection: %d", WSAGetLastError());
+                closesocket(tListenSocket);
+                WSACleanup();
+                return;
+            }
+            DriverLog("Unity: Restarting and Server: Accepting connection!\n");
+
+            // Accept the connection
+            tClientSocket = accept(tListenSocket, NULL, NULL);
+            if (tClientSocket == INVALID_SOCKET)
+            {
+                DriverLog("Unity: Error accepting connection: %d", WSAGetLastError());
+                closesocket(tListenSocket);
+                WSACleanup();
+                return;
+            }
+
+            // end SetupListen
+        }
 
         emulated_buttons_state states[2];
 
