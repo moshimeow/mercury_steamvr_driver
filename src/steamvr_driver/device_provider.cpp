@@ -20,6 +20,10 @@
 #include "tracking_subprocess_protocol.hpp"
 #include "math/m_relation_history.h"
 
+#include "util/u_json.hpp"
+
+using namespace xrt::auxiliary::util::json;
+
 namespace xat = xrt::auxiliary::tracking;
 
 void DeviceProvider::Monster300HzThread()
@@ -193,6 +197,7 @@ vr::EVRInitError DeviceProvider::Init(vr::IVRDriverContext *pDriverContext)
     is_active_ = true;
     hand_tracking_thread_ = std::thread(&DeviceProvider::HandTrackingThread, this);
     monster_300hz_thread_ = std::thread(&DeviceProvider::Monster300HzThread, this);
+    unity_communication_thread_ = std::thread(&DeviceProvider::UnityInputCommunicationThread, this);
 
     return vr::VRInitError_None;
 }
@@ -365,8 +370,8 @@ void DeviceProvider::HandTrackingThread()
         m_relation_history_push(left_hand_->pose_raw_hist_, &tips[0], message.camera_timestamp);
         m_relation_history_push(right_hand_->pose_raw_hist_, &tips[1], message.camera_timestamp);
 
-        // left_hand_->UpdateFakeControllerInput(message.hands[0].bs);
-        // right_hand_->UpdateFakeControllerInput(message.hands[1].bs);
+        left_hand_->CursedUpdateCurlAndTrigger(message.hands[0].bs);
+        right_hand_->CursedUpdateCurlAndTrigger(message.hands[1].bs);
 
 #ifdef TIMING_DEBUGGING
         timestamps_debug_ << std::to_string(message.camera_timestamp) << ", "
@@ -379,6 +384,140 @@ void DeviceProvider::HandTrackingThread()
 
         timestamps_debug_.flush();
 #endif
+    }
+}
+
+void blah(const char *stuff, emulated_buttons_state *buttons_lr)
+{
+    JSONNode node(stuff);
+
+    if (node.isInvalid())
+    {
+        printf("Not valid JSON\n");
+        return;
+    }
+
+    if (!node.isObject())
+    {
+        printf("Valid JSON, but not an object ({})\n");
+        return;
+    }
+
+    std::string names[2] = {"Left", "Right"};
+
+    for (int i = 0; i < 2; i++)
+    {
+        emulated_buttons_state &bs = buttons_lr[i];
+
+        JSONNode side = node[names[i]];
+        bs.a = side["a"].asInt();
+        bs.b = side["b"].asInt();
+
+        // defaults
+        bs.trigger = side["trigger"].asInt();
+        bs.grip = side["grip"].asInt();
+
+        bs.thumbstick_gesture = side["thumbstick_active"].asBool();
+
+        bs.thumbstick_x = side["thumbstick_x"].asDouble();
+        bs.thumbstick_y = side["thumbstick_y"].asDouble();
+
+        // printf("%s: %d %d %d %d  %d %f %f\n", names[i].c_str(), a, b, trigger, grip, thumbstick_active, thumbstick_x, thumbstick_y);
+    }
+}
+
+void DeviceProvider::UnityInputCommunicationThread()
+{
+    sockaddr_in localAddr;
+    SOCKET clientSocket;
+    SOCKET listenSocket;
+
+    // Initialize Winsock
+    WSADATA wsaData;
+    int iResult = WSAStartup(MAKEWORD(2, 2), &wsaData);
+    if (iResult != 0)
+    {
+        printf("WSAStartup failed: %d", iResult);
+        return;
+    }
+
+    // Create a socket for the subprocess to connect to
+    listenSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    if (listenSocket == INVALID_SOCKET)
+    {
+        printf("Error creating socket: %d", WSAGetLastError());
+        WSACleanup();
+        return;
+    }
+
+    // Bind the socket to any available address and port 0 to let the operating system choose a free port
+    sockaddr_in listenAddr;
+    listenAddr.sin_family = AF_INET;
+    listenAddr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+    listenAddr.sin_port = htons(12428);
+    iResult = bind(listenSocket, (sockaddr *)&listenAddr, sizeof(listenAddr));
+    if (iResult == SOCKET_ERROR)
+    {
+        printf("Error binding socket: %d", WSAGetLastError());
+        closesocket(listenSocket);
+        WSACleanup();
+        return;
+    }
+
+    // Get the local address and port of the socket
+    // sockaddr_in localAddr;
+    int localAddrLen = sizeof(localAddr);
+    iResult = getsockname(listenSocket, (sockaddr *)&localAddr, &localAddrLen);
+    if (iResult == SOCKET_ERROR)
+    {
+        printf("Error getting socket name: %d", WSAGetLastError());
+        closesocket(listenSocket);
+        WSACleanup();
+        return;
+    }
+
+    // SetupListen
+
+    printf("Server: Listening!\n");
+
+    // Listen for the subprocess to connect
+    iResult = listen(listenSocket, SOMAXCONN);
+    if (iResult == SOCKET_ERROR)
+    {
+        printf("Error listening for connection: %d", WSAGetLastError());
+        closesocket(listenSocket);
+        WSACleanup();
+        return;
+    }
+    printf("Server: Accepting connection!\n");
+
+    // Accept the connection
+    clientSocket = accept(listenSocket, NULL, NULL);
+    if (clientSocket == INVALID_SOCKET)
+    {
+        printf("Error accepting connection: %d", WSAGetLastError());
+        closesocket(listenSocket);
+        WSACleanup();
+        return;
+    }
+
+    // end SetupListen
+
+    while (true)
+    {
+
+        int iResult = 0;
+        char message[2048] = {};
+        iResult = recv(clientSocket, message, 2047, 0);
+
+        emulated_buttons_state states[2];
+
+        blah(message, states);
+
+        left_hand_->CursedUpdateOtherInputs(states[0]);
+        right_hand_->CursedUpdateOtherInputs(states[1]);
+
+        // printf("Got message %s\n\n\n\n", message);
     }
 }
 

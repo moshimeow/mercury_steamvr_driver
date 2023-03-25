@@ -162,31 +162,32 @@ void MercuryHandDevice::UpdateFingerPose(const xrt_hand_joint_set *joint_set_loc
     // It's constantly up for debate what "the root" actually is
     HandJointSetToBoneTransform(*joint_set_local, this->bone_transforms_, role_, tmp.pose);
 
-    #if 1
-        for (int i = 0; i < OPENVR_BONE_COUNT; i++) {
-            bool is = false;
+#if 1
+    for (int i = 0; i < OPENVR_BONE_COUNT; i++)
+    {
+        bool is = false;
 
-            // is = is && !(this->bone_transforms_[i].position.v[0] != )
-            is = is || std::isnan(this->bone_transforms_[i].position.v[0]);
-            is = is || std::isnan(this->bone_transforms_[i].position.v[1]);
-            is = is || std::isnan(this->bone_transforms_[i].position.v[2]);
-            is = is || std::isnan(this->bone_transforms_[i].position.v[3]);
-            
-            is = is || std::isnan(this->bone_transforms_[i].orientation.w);
-            is = is || std::isnan(this->bone_transforms_[i].orientation.x);
-            is = is || std::isnan(this->bone_transforms_[i].orientation.y);
-            is = is || std::isnan(this->bone_transforms_[i].orientation.z);
+        // is = is && !(this->bone_transforms_[i].position.v[0] != )
+        is = is || std::isnan(this->bone_transforms_[i].position.v[0]);
+        is = is || std::isnan(this->bone_transforms_[i].position.v[1]);
+        is = is || std::isnan(this->bone_transforms_[i].position.v[2]);
+        is = is || std::isnan(this->bone_transforms_[i].position.v[3]);
 
-            if (is) {
-                DriverLog("Component of hand %d is nan", i);
-            }
+        is = is || std::isnan(this->bone_transforms_[i].orientation.w);
+        is = is || std::isnan(this->bone_transforms_[i].orientation.x);
+        is = is || std::isnan(this->bone_transforms_[i].orientation.y);
+        is = is || std::isnan(this->bone_transforms_[i].orientation.z);
 
-            // DriverLog("%d %f %f %f %f   %f %f %f %f", i, this->bone_transforms_[i].position.v[0], this[i].bone_transforms_[i].position.v[1], this[i].bone_transforms_[i].position.v[2], this[i].bone_transforms_[i].position.v[3], 
-            
-            
-            // this[i].bone_transforms_[i].orientation.w, this[i].bone_transforms_[i].orientation.x, this[i].bone_transforms_[i].orientation.y, this[i].bone_transforms_[i].orientation.z );
+        if (is)
+        {
+            DriverLog("Component of hand %d is nan", i);
         }
-    #endif
+
+        // DriverLog("%d %f %f %f %f   %f %f %f %f", i, this->bone_transforms_[i].position.v[0], this[i].bone_transforms_[i].position.v[1], this[i].bone_transforms_[i].position.v[2], this[i].bone_transforms_[i].position.v[3],
+
+        // this[i].bone_transforms_[i].orientation.w, this[i].bone_transforms_[i].orientation.x, this[i].bone_transforms_[i].orientation.y, this[i].bone_transforms_[i].orientation.z );
+    }
+#endif
 
     // Sets the finger poses
     //! @todo: do we really need to update it twice?
@@ -277,16 +278,8 @@ void curl(MercuryHandDevice &dev, enum KnuckleDeviceComponentIndex idx, float cu
 }
 
 // Note: It doesn't matter if we constantly send updates with the same value, that's fine. This function strives _not_ to just because it's a waste, but it still does for some things. It's fine.
-void MercuryHandDevice::UpdateFakeControllerInput(emulated_buttons_state buttons_state)
+void MercuryHandDevice::CursedUpdateCurlAndTrigger(emulated_buttons_state buttons_state) // UpdateFakeControllerInput
 {
-
-    if (buttons_state_.system != buttons_state.system)
-    {
-        // DriverLog("Updated ! %d", buttons_state.system);
-        vr::VRDriverInput()->UpdateBooleanComponent(input_components_[kKnuckleDeviceComponentIndex_SystemClick], buttons_state.system, 0);
-        vr::VRDriverInput()->UpdateBooleanComponent(input_components_[kKnuckleDeviceComponentIndex_SystemTouch], buttons_state.system, 0);
-    }
-
     if (buttons_state_.trigger != buttons_state.trigger)
     {
         // DriverLog("Updated ! %d", buttons_state.trigger);
@@ -294,6 +287,23 @@ void MercuryHandDevice::UpdateFakeControllerInput(emulated_buttons_state buttons
         vr::VRDriverInput()->UpdateScalarComponent(input_components_[kKnuckleDeviceComponentIndex_TriggerValue], buttons_state.trigger ? 1.0f : 0.0f, 0);
     }
 
+    vr::VRDriverInput()->UpdateScalarComponent(input_components_[kKnuckleDeviceComponentIndex_FingerIndex], buttons_state_.curls[1] * -0.4, 0);
+    vr::VRDriverInput()->UpdateScalarComponent(input_components_[kKnuckleDeviceComponentIndex_FingerMiddle], buttons_state_.curls[2] * -0.4, 0);
+    vr::VRDriverInput()->UpdateScalarComponent(input_components_[kKnuckleDeviceComponentIndex_FingerRing], buttons_state_.curls[3] * -0.4, 0);
+    vr::VRDriverInput()->UpdateScalarComponent(input_components_[kKnuckleDeviceComponentIndex_FingerPinky], buttons_state_.curls[4] * -0.4, 0);
+
+    buttons_state_.curls[0] = buttons_state.curls[0];
+    buttons_state_.curls[1] = buttons_state.curls[1];
+    buttons_state_.curls[2] = buttons_state.curls[2];
+    buttons_state_.curls[3] = buttons_state.curls[3];
+    buttons_state_.curls[4] = buttons_state.curls[4];
+    buttons_state_.trigger = buttons_state.trigger;
+
+    return;
+}
+
+void MercuryHandDevice::CursedUpdateOtherInputs(emulated_buttons_state buttons_state) // UpdateFakeControllerInput
+{
     if (buttons_state_.a != buttons_state.a)
     {
         bool val = buttons_state.a;
@@ -317,6 +327,13 @@ void MercuryHandDevice::UpdateFakeControllerInput(emulated_buttons_state buttons
         vr::VRDriverInput()->UpdateScalarComponent(input_components_[kKnuckleDeviceComponentIndex_GripValue], val_scalar, 0);
     }
 
+    if (buttons_state_.system != buttons_state.system)
+    {
+        // DriverLog("Updated ! %d", buttons_state.system);
+        vr::VRDriverInput()->UpdateBooleanComponent(input_components_[kKnuckleDeviceComponentIndex_SystemClick], buttons_state.system, 0);
+        vr::VRDriverInput()->UpdateBooleanComponent(input_components_[kKnuckleDeviceComponentIndex_SystemTouch], buttons_state.system, 0);
+    }
+
     if (buttons_state_.thumbstick_gesture)
     {
         vr::VRDriverInput()->UpdateScalarComponent(input_components_[kKnuckleDeviceComponentIndex_ThumbstickX], buttons_state_.thumbstick_x, 0);
@@ -332,13 +349,16 @@ void MercuryHandDevice::UpdateFakeControllerInput(emulated_buttons_state buttons
         vr::VRDriverInput()->UpdateBooleanComponent(input_components_[kKnuckleDeviceComponentIndex_ThumbstickTouch], false, 0);
     }
 
-    vr::VRDriverInput()->UpdateScalarComponent(input_components_[kKnuckleDeviceComponentIndex_FingerIndex], buttons_state_.curls[1] * -0.4, 0);
-    vr::VRDriverInput()->UpdateScalarComponent(input_components_[kKnuckleDeviceComponentIndex_FingerMiddle], buttons_state_.curls[2] * -0.4, 0);
-    vr::VRDriverInput()->UpdateScalarComponent(input_components_[kKnuckleDeviceComponentIndex_FingerRing], buttons_state_.curls[3] * -0.4, 0);
-    vr::VRDriverInput()->UpdateScalarComponent(input_components_[kKnuckleDeviceComponentIndex_FingerPinky], buttons_state_.curls[4] * -0.4, 0);
+    buttons_state_.a = buttons_state.a;
+    buttons_state_.b = buttons_state.b;
+    buttons_state_.grip = buttons_state.grip;
+    buttons_state_.system = buttons_state.system;
 
-    buttons_state_ = buttons_state;
-}
+    buttons_state_.thumbstick_gesture = buttons_state.thumbstick_gesture;
+
+    buttons_state_.thumbstick_x = buttons_state.thumbstick_x;
+    buttons_state_.thumbstick_y = buttons_state.thumbstick_y;
+};
 
 // todo: what do we want to do here?
 void MercuryHandDevice::EnterStandby() {}

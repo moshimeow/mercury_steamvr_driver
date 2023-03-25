@@ -43,6 +43,7 @@ private:
     bool SetupListen();
 
     void HandTrackingThread();
+    void UnityInputCommunicationThread();
 
     SOCKET clientSocket;
     SOCKET listenSocket;
@@ -53,6 +54,7 @@ private:
     std::atomic<bool> is_active_;
     std::thread hand_tracking_thread_;
     std::thread monster_300hz_thread_;
+    std::thread unity_communication_thread_;
 
     std::unique_ptr<MercuryHandDevice> left_hand_;
     std::unique_ptr<MercuryHandDevice> right_hand_;

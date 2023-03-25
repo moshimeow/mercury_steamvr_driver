@@ -92,7 +92,8 @@ public:
 
     // void UpdateBooleanAndScalar(bool &value, bool &last_value, )
 
-    void UpdateFakeControllerInput(struct emulated_buttons_state buttons_state);
+    void CursedUpdateCurlAndTrigger(struct emulated_buttons_state buttons_state);
+    void CursedUpdateOtherInputs(struct emulated_buttons_state buttons_state);
 
     vr::DriverPose_t GetPose() override;
     std::string GetSerialNumber();

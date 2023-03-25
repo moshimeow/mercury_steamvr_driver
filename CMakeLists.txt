@@ -122,4 +122,8 @@ find_package(
 add_subdirectory(monado)
 
 add_subdirectory(src)
+
+
 add_subdirectory(attic/cs_test)
+add_subdirectory(attic/input_test)
+

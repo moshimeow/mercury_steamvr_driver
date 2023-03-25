@@ -247,7 +247,7 @@ void hjs2_to_tracking_message(subprocess_state &state, xrt_hand_joint_set sets[2
         }
 
         trigger_decide(set, &state.bs[hand_idx].trigger);
-        // msg.hands[hand_idx].bs = state.bs[hand_idx];
+        msg.hands[hand_idx].bs = state.bs[hand_idx];
 
         xrt_space_relation wrist = set.values.hand_joint_set_default[XRT_HAND_JOINT_WRIST].relation;
         xrt_space_relation index_pxm = set.values.hand_joint_set_default[XRT_HAND_JOINT_INDEX_PROXIMAL].relation;
@@ -334,7 +334,7 @@ void hjs2_to_tracking_message(subprocess_state &state, xrt_hand_joint_set sets[2
 
             math_quat_rotate(&ap_.orientation, &add, &ap_.orientation);
 
-            if (false)
+            if (msg.hands[hand_idx].bs.trigger)
             {
                 // Too low
                 // const float mul = 0.000001;
