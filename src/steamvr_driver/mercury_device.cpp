@@ -138,6 +138,12 @@ void convert_vec3(const T &p_quatA, U &p_quatB)
     p_quatB.z = p_quatA.z;
 }
 
+void scream_if_nan(float val, int bone_idx, int hand_idx, const char* name) {
+    if(std::isnan(val)) {
+        DriverLog("Component %s of bone %d on hand %d is nan", name, bone_idx, hand_idx);
+    }
+}
+
 // Updates the poses of the fake controllers as well as the finger poses
 void MercuryHandDevice::UpdateFingerPose(const xrt_hand_joint_set *joint_set_local, xrt_pose raw, xrt_pose wrist)
 {
@@ -163,29 +169,19 @@ void MercuryHandDevice::UpdateFingerPose(const xrt_hand_joint_set *joint_set_loc
     HandJointSetToBoneTransform(*joint_set_local, this->bone_transforms_, role_, tmp.pose);
 
 #if 1
-    for (int i = 0; i < OPENVR_BONE_COUNT; i++)
+    for (int bone_idx = 0; bone_idx < OPENVR_BONE_COUNT; bone_idx++)
     {
-        bool is = false;
+        int hand_idx = !IsLeftHand();
+        scream_if_nan(this->bone_transforms_[bone_idx].position.v[0], bone_idx, hand_idx, "position.v[0]" );
+        scream_if_nan(this->bone_transforms_[bone_idx].position.v[1], bone_idx, hand_idx, "position.v[1]" );
+        scream_if_nan(this->bone_transforms_[bone_idx].position.v[2], bone_idx, hand_idx, "position.v[2]" );
+        scream_if_nan(this->bone_transforms_[bone_idx].position.v[3], bone_idx, hand_idx, "position.v[3]" );
 
-        // is = is && !(this->bone_transforms_[i].position.v[0] != )
-        is = is || std::isnan(this->bone_transforms_[i].position.v[0]);
-        is = is || std::isnan(this->bone_transforms_[i].position.v[1]);
-        is = is || std::isnan(this->bone_transforms_[i].position.v[2]);
-        is = is || std::isnan(this->bone_transforms_[i].position.v[3]);
 
-        is = is || std::isnan(this->bone_transforms_[i].orientation.w);
-        is = is || std::isnan(this->bone_transforms_[i].orientation.x);
-        is = is || std::isnan(this->bone_transforms_[i].orientation.y);
-        is = is || std::isnan(this->bone_transforms_[i].orientation.z);
-
-        if (is)
-        {
-            DriverLog("Component %d of hand %d is nan", !IsLeftHand(), i);
-        }
-
-        // DriverLog("%d %f %f %f %f   %f %f %f %f", i, this->bone_transforms_[i].position.v[0], this[i].bone_transforms_[i].position.v[1], this[i].bone_transforms_[i].position.v[2], this[i].bone_transforms_[i].position.v[3],
-
-        // this[i].bone_transforms_[i].orientation.w, this[i].bone_transforms_[i].orientation.x, this[i].bone_transforms_[i].orientation.y, this[i].bone_transforms_[i].orientation.z );
+        scream_if_nan(this->bone_transforms_[bone_idx].orientation.w, bone_idx, hand_idx, "orientation.w" );
+        scream_if_nan(this->bone_transforms_[bone_idx].orientation.x, bone_idx, hand_idx, "orientation.x" );
+        scream_if_nan(this->bone_transforms_[bone_idx].orientation.y, bone_idx, hand_idx, "orientation.y" );
+        scream_if_nan(this->bone_transforms_[bone_idx].orientation.z, bone_idx, hand_idx, "orientation.z" );
     }
 #endif
 
