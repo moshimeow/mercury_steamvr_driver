@@ -28,6 +28,7 @@
 
 #include "pinch_decider.hpp"
 #include "math/m_filter_one_euro.h"
+#include "get_finger_curls.hpp"
 
 #define meow_printf U_SP_LOG_E
 
@@ -58,7 +59,7 @@
 
 namespace xat = xrt::auxiliary::tracking;
 
-static char* rootpath = NULL;
+static char *rootpath = NULL;
 
 struct subprocess_state
 {
@@ -219,6 +220,26 @@ xrt_pose GetPose(const vr::HmdMatrix34_t &matrix)
     q.z = copysign(q.z, matrix.m[1][0] - matrix.m[0][1]);
 
     return {q, v};
+}
+
+void decide_finger_curls(struct tracking_message &msg)
+{
+    for (int hand_idx = 0; hand_idx < 2; hand_idx++)
+    {
+        hand26 hand;
+        for (int i = 0; i < XRT_HAND_JOINT_COUNT; i++)
+        {
+            hand[i] = msg.hands[hand_idx].fingers_relative[i];
+        }
+
+        std::array<float, 5> curls;
+        hand_curls(hand, curls);
+
+        for (int i = 0; i < 5; i++)
+        {
+            msg.hands[hand_idx].bs.curls[i] = curls[i];
+        }
+    }
 }
 
 void hjs2_to_tracking_message(subprocess_state &state, xrt_hand_joint_set sets[2], xrt_pose attached_head, struct tracking_message &msg, int64_t tracking_ts)
@@ -388,6 +409,9 @@ void hjs2_to_tracking_message(subprocess_state &state, xrt_hand_joint_set sets[2
         }
     }
     // decide_everything_else(msg, attached_head, state.grip_instead_of_aim);
+
+    decide_finger_curls(msg);
+
     state.grip_instead_of_aim = false;
 
     // state.bs[0] = msg.hands[0].bs;
@@ -441,7 +465,8 @@ int main(int argc, char **argv)
     state.vive_config_location = argv[2];
     rootpath = argv[3];
 
-    if (argc >= 5) {
+    if (argc >= 5)
+    {
         u_sp_log_set_file_path(argv[4]);
     }
 
