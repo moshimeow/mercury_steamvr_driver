@@ -225,35 +225,50 @@ void hjs_from_tracking_message(const struct tracking_message_hand &msg, xrt_hand
     }
 }
 
-xrt_space_relation handle_wrist_pose(const struct tracking_message_hand &msg)
+xrt_space_relation handle_pose_and_tracked_state(xrt_pose pose, bool tracked)
 {
-    xrt_space_relation tmp;
+    xrt_space_relation tmp = {};
 
-    if (!msg.tracked)
+    if (!tracked)
     {
         tmp.relation_flags = XRT_SPACE_RELATION_BITMASK_NONE;
         return tmp;
     }
     tmp.relation_flags = valid_flags_ht;
 
-    tmp.pose = msg.wrist;
+    tmp.pose = pose;
     return tmp;
 }
 
-xrt_space_relation handle_tip_pose(const struct tracking_message_hand &msg)
-{
-    xrt_space_relation tmp;
+// xrt_space_relation handle_wrist_pose(const struct tracking_message_hand &msg)
+// {
+//     xrt_space_relation tmp;
 
-    if (!msg.tracked)
-    {
-        tmp.relation_flags = XRT_SPACE_RELATION_BITMASK_NONE;
-        return tmp;
-    }
-    tmp.relation_flags = valid_flags_ht;
+//     if (!msg.tracked)
+//     {
+//         tmp.relation_flags = XRT_SPACE_RELATION_BITMASK_NONE;
+//         return tmp;
+//     }
+//     tmp.relation_flags = valid_flags_ht;
 
-    tmp.pose = msg.pose_raw;
-    return tmp;
-}
+//     tmp.pose = msg.wrist;
+//     return tmp;
+// }
+
+// xrt_space_relation handle_tip_pose(const struct tracking_message_hand &msg)
+// {
+//     xrt_space_relation tmp;
+
+//     if (!msg.tracked)
+//     {
+//         tmp.relation_flags = XRT_SPACE_RELATION_BITMASK_NONE;
+//         return tmp;
+//     }
+//     tmp.relation_flags = valid_flags_ht;
+
+//     tmp.pose = msg.pose_raw;
+//     return tmp;
+// }
 
 void DeviceProvider::HandTrackingThread()
 {
@@ -333,11 +348,20 @@ void DeviceProvider::HandTrackingThread()
         xrt_space_relation wrists[2] = {};
         xrt_space_relation tips[2] = {};
 
-        wrists[0] = handle_wrist_pose(message.hands[0]);
-        wrists[1] = handle_wrist_pose(message.hands[1]);
+        wrists[0] = handle_pose_and_tracked_state(message.hands[0].wrist, message.hands[0].tracked);
+        wrists[0] = handle_pose_and_tracked_state(message.hands[1].wrist, message.hands[1].tracked);
 
-        tips[0] = handle_tip_pose(message.hands[0]);
-        tips[1] = handle_tip_pose(message.hands[1]);
+        // This is so tech-debt-y, I'm sorry
+        if (through_shoulder_aim_)
+        {
+            tips[0] = handle_pose_and_tracked_state(message.hands[0].aim_pose, message.hands[0].tracked);
+            tips[1] = handle_pose_and_tracked_state(message.hands[1].aim_pose, message.hands[1].tracked);
+        }
+        else
+        {
+            tips[0] = handle_pose_and_tracked_state(message.hands[0].grip_pose, message.hands[0].tracked);
+            tips[1] = handle_pose_and_tracked_state(message.hands[1].grip_pose, message.hands[1].tracked);
+        }
 
         int64_t max_delay = 0;
         for (int i = 0; i < prev_delays_.size(); i++)
@@ -387,7 +411,7 @@ void DeviceProvider::HandTrackingThread()
     }
 }
 
-void blah(const char *stuff, emulated_buttons_state *buttons_lr)
+void blah(const char *stuff, emulated_buttons_state *buttons_lr, bool &through_shoulder_aim)
 {
     JSONNode node(stuff);
 
@@ -425,6 +449,8 @@ void blah(const char *stuff, emulated_buttons_state *buttons_lr)
 
         // printf("%s: %d %d %d %d  %d %f %f\n", names[i].c_str(), a, b, trigger, grip, thumbstick_active, thumbstick_x, thumbstick_y);
     }
+
+    through_shoulder_aim = node["through_shoulder_aim"].asBool(true);
 }
 
 void DeviceProvider::UnityInputCommunicationThread()
@@ -533,8 +559,6 @@ void DeviceProvider::UnityInputCommunicationThread()
 
             // close(tClientSocket);
 
-
-
             // SetupListen
 
             DriverLog("Unity: Server: Restarting and Listening!\n");
@@ -565,7 +589,7 @@ void DeviceProvider::UnityInputCommunicationThread()
 
         emulated_buttons_state states[2];
 
-        blah(message, states);
+        blah(message, states, this->through_shoulder_aim_);
 
         left_hand_->CursedUpdateOtherInputs(states[0]);
         right_hand_->CursedUpdateOtherInputs(states[1]);

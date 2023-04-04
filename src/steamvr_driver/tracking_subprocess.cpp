@@ -308,9 +308,6 @@ void hjs2_to_tracking_message(subprocess_state &state, xrt_hand_joint_set sets[2
         }
         xrt_hand_joint_set &set = sets[hand_idx];
 
-        xrt_pose ap;
-
-        if (state.grip_instead_of_aim)
         {
             xrt_vec3 hello = {};
             xrt_vec3 &grip_position = state.grip_position[hand_idx];
@@ -341,9 +338,8 @@ void hjs2_to_tracking_message(subprocess_state &state, xrt_hand_joint_set sets[2
 
             m_relation_chain_push_pose(&xrc, &wrist_global[hand_idx]);
             m_relation_chain_resolve(&xrc, &tmp);
-            ap = tmp.pose;
+            msg.hands[hand_idx].grip_pose = tmp.pose;
         }
-        else
         {
             xrt_pose ap_ = aim_pose(hand_idx, wrist_global[hand_idx], index_pxm_global[hand_idx], tracked[!hand_idx] ? &wrist_global[!hand_idx] : NULL, attached_head);
 
@@ -391,12 +387,15 @@ void hjs2_to_tracking_message(subprocess_state &state, xrt_hand_joint_set sets[2
                 state.quat_filters[hand_idx].base.beta = OUR_BETA;
             }
 
+            xrt_pose ap;
             m_filter_euro_quat_run(&state.quat_filters[hand_idx], tracking_ts, &ap_.orientation, &ap.orientation);
             m_filter_euro_vec3_run(&state.vector_filters[hand_idx], tracking_ts, &ap_.position, &ap.position);
+
+            msg.hands[hand_idx].aim_pose = ap;
         }
 
-        msg.hands[hand_idx].pose_raw = ap;
         msg.hands[hand_idx].wrist = wrist_global[hand_idx];
+        
         for (int i = 0; i < XRT_HAND_JOINT_COUNT; i++)
         {
             struct xrt_relation_chain xrc = {};
