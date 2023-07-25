@@ -349,7 +349,7 @@ void DeviceProvider::HandTrackingThread()
         xrt_space_relation tips[2] = {};
 
         wrists[0] = handle_pose_and_tracked_state(message.hands[0].wrist, message.hands[0].tracked);
-        wrists[0] = handle_pose_and_tracked_state(message.hands[1].wrist, message.hands[1].tracked);
+        wrists[1] = handle_pose_and_tracked_state(message.hands[1].wrist, message.hands[1].tracked);
 
         // This is so tech-debt-y, I'm sorry
         if (through_shoulder_aim_)
@@ -549,6 +549,9 @@ void DeviceProvider::UnityInputCommunicationThread()
         // This isn't really right but should do fine
         if ((iResult == SOCKET_ERROR) && ((WSAGetLastError() == WSAECONNRESET) && TRY_RESTART) || (iResult == 0))
         {
+            // if we're disconnected, use the aim strategy that'll leave SteamVR useable
+            this->through_shoulder_aim_ = true;
+            
             int last_error = WSAGetLastError();
             // if (WSAGetLastError() == WSAETIMEDOUT)
             // {

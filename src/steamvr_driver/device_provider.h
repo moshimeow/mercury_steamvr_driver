@@ -68,7 +68,7 @@ private:
     sockaddr_in localAddr;
     std::string hmd_config;
 
-    bool through_shoulder_aim_;
+    bool through_shoulder_aim_ = true;
 
 
     // struct m_relation_history *relation_hist[2];
