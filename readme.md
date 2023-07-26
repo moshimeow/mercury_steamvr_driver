@@ -8,7 +8,6 @@ Prerequisites:
 - vcpkg
 - CMake
 - Ninja
-- clang
 - Visual Studio 2019, or 2022
 
 ### Clone the repository
