@@ -1,6 +1,6 @@
 # SteamVR driver for Mercury hand tracking!
 
-This is very in-development. Check back later!
+I am not maintaining this and the camera driver might fuck up your index cameras! https://github.com/korejan/mercury_steamvr_driver has a binary release if you want to try it at your own risk.
 
 ## Build Instructions
 
@@ -31,3 +31,4 @@ powershell .\attic\moshi_build.ps1
 ```
 
 Once this has completed, copy `onnxruntime.dll` from the `deps` folder to `build/mercury/bin/win64/`.
+
